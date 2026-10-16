@@ -157,8 +157,8 @@ export default {
       for (const type of cfg.tipos) {
         if (!TYPE_SLUG[type]) continue;
         for (let p = 0; p < cfg.paginas_por_busqueda; p++) {
-          const desde = p ? `_Desde_${p * 50 + 1}` : '';
-          const url = `https://inmuebles.mercadolibre.com.ar/${TYPE_SLUG[type]}/${OP_SLUG[op]}/${zona}/${desde}`;
+          const desde = p ? `_Desde_${p * 50 + 1}_NoIndex_True` : '';
+          const url = `https://inmuebles.mercadolibre.com.ar/${TYPE_SLUG[type]}/${OP_SLUG[op]}/${zona}/${desde}`.replace(/\/$/, p ? '' : '/');
           const html = await fetchText(url);
           if (!p && type === cfg.tipos[0] && op === cfg.operaciones[0]) dumpRaw('mercadolibre.html', html);
           const items = parsePolycards(html, { operation: op, type });
