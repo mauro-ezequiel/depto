@@ -1,0 +1,16 @@
+{
+  "name": "depto",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Junta avisos de inmuebles de varios portales en una sola app instalable.",
+  "scripts": {
+    "collect": "node collector/collect.mjs",
+    "test": "node --test collector/test/*.test.mjs",
+    "serve": "npx --yes serve web -l 8080"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "cheerio": "1.2.0"
+  }
+}

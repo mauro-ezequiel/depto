@@ -1,0 +1,54 @@
+name: Actualizar avisos y publicar
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"   # cada 3 horas
+  workflow_dispatch:          # botón "Run workflow" para correrlo a mano
+  push:
+    branches: [main]
+    paths: ["web/**", "collector/**"]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: actualizar
+  cancel-in-progress: false
+
+jobs:
+  recolectar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Leer portales
+        if: github.event_name != 'push'
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+        run: node collector/collect.mjs
+      - name: Guardar datos en el repo
+        if: github.event_name != 'push'
+        run: |
+          git config user.name "depto-bot"
+          git config user.email "depto-bot@users.noreply.github.com"
+          git add web/data
+          git diff --cached --quiet || git commit -m "Avisos actualizados $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deploy
+        uses: actions/deploy-pages@v4
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}

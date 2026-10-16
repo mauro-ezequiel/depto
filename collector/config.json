@@ -1,0 +1,23 @@
+{
+  "_comentario": "Editá este archivo para cambiar zona, operaciones, tipos y cuántas páginas leer por portal.",
+  "zona": {
+    "nombre": "Capital Federal",
+    "argenprop": "capital-federal",
+    "zonaprop": "capital-federal",
+    "properati": "capital-federal",
+    "mercadolibre_state_id": "TUxBUENBUGw3M2E1"
+  },
+  "operaciones": ["venta", "alquiler"],
+  "tipos": ["departamento", "ph", "casa", "local", "oficina", "terreno"],
+  "paginas_por_busqueda": 3,
+  "pausa_entre_pedidos_ms": 2500,
+  "dias_para_borrar_no_vistos": 10,
+  "maximo_avisos": 6000,
+  "fuentes": {
+    "mercadolibre": true,
+    "argenprop": true,
+    "zonaprop": true,
+    "properati": true,
+    "remax": true
+  }
+}

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Depto</title>
+  <meta name="description" content="Todos los avisos de departamentos, PH, casas y locales en un solo lugar.">
+  <meta name="theme-color" content="#0f766e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Depto">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <img src="icons/icon.svg" alt="" width="28" height="28">
+      <span>Depto</span>
+      <button id="installBtn" class="pill hidden" type="button">Instalar</button>
+    </div>
+    <div class="searchrow">
+      <input id="q" type="search" placeholder="Buscar barrio, calle, palabra…" autocomplete="off" enterkeyhint="search">
+      <button id="filtersBtn" class="iconbtn" type="button" aria-label="Filtros">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 5h18M6 12h12M10 19h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+        <span id="filterCount" class="badge hidden"></span>
+      </button>
+    </div>
+    <nav class="chips" id="opChips" aria-label="Operación">
+      <button data-op="" class="chip on">Todo</button>
+      <button data-op="venta" class="chip">Venta</button>
+      <button data-op="alquiler" class="chip">Alquiler</button>
+      <button data-op="fav" class="chip">♥ Guardados</button>
+    </nav>
+  </header>
+
+  <main>
+    <div id="meta" class="meta"></div>
+    <div id="grid" class="grid" aria-live="polite"></div>
+    <div id="more" class="more"></div>
+    <div id="empty" class="empty hidden"></div>
+  </main>
+
+  <!-- Filtros -->
+  <dialog id="filters" class="sheet">
+    <form method="dialog" id="filterForm">
+      <h2>Filtros</h2>
+      <fieldset>
+        <legend>Tipo</legend>
+        <div class="chips wrap" id="typeChips"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Precio</legend>
+        <div class="row">
+          <select name="currency" aria-label="Moneda"><option value="">Cualquier moneda</option><option value="USD">USD</option><option value="ARS">$ (pesos)</option></select>
+        </div>
+        <div class="row">
+          <input name="pmin" type="number" inputmode="numeric" placeholder="Mínimo">
+          <input name="pmax" type="number" inputmode="numeric" placeholder="Máximo">
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Ambientes (mínimo)</legend>
+        <div class="chips" id="roomChips">
+          <button type="button" data-v="" class="chip on">Todos</button>
+          <button type="button" data-v="1" class="chip">1+</button>
+          <button type="button" data-v="2" class="chip">2+</button>
+          <button type="button" data-v="3" class="chip">3+</button>
+          <button type="button" data-v="4" class="chip">4+</button>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Superficie mínima (m²)</legend>
+        <input name="amin" type="number" inputmode="numeric" placeholder="Ej: 40">
+      </fieldset>
+      <fieldset>
+        <legend>Portales</legend>
+        <div class="chips wrap" id="sourceChips"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Ordenar por</legend>
+        <select name="sort">
+          <option value="new">Más nuevos primero</option>
+          <option value="price_asc">Precio: menor a mayor</option>
+          <option value="price_desc">Precio: mayor a menor</option>
+          <option value="m2_asc">Precio por m²: menor a mayor</option>
+          <option value="area_desc">Más grandes primero</option>
+        </select>
+      </fieldset>
+      <label class="check"><input type="checkbox" name="photos"> Solo con fotos</label>
+      <label class="check"><input type="checkbox" name="showHidden"> Mostrar los que descarté</label>
+      <div class="actions">
+        <button type="button" id="resetFilters" class="ghost">Limpiar</button>
+        <button value="ok" class="primary">Ver resultados</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Detalle -->
+  <dialog id="detail" class="sheet detail"></dialog>
+
+  <!-- Estado de fuentes -->
+  <dialog id="sources" class="sheet"></dialog>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>
