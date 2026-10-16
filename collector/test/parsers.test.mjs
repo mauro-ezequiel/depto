@@ -67,3 +67,44 @@ test('__NEXT_DATA__ y JSON-LD', () => {
   assert.equal(l.currency, 'ARS');
   assert.equal(l.operation, 'alquiler');
 });
+
+test('mercado libre: tarjetas polycard de la página pública', async () => {
+  const { parsePolycards } = await import('../sources/mercadolibre.mjs');
+  const card = { id: 'POLYCARD', polycard: {
+    metadata: { id: 'MLA1', url: 'departamento.mercadolibre.com.ar/MLA-1-depto-_JM', domain_id: 'MLA-APARTMENTS_FOR_SALE' },
+    pictures: { pictures: [{ id: '123-MLA1_102026' }] },
+    components: [
+      { type: 'headline', headline: { text: 'Departamento en venta' } },
+      { type: 'title', title: { text: 'Depto luminoso' } },
+      { type: 'price', price: { current_price: { value: 98000, currency: 'USD' } } },
+      { type: 'attributes_list', attributes_list: { texts: ['2 ambs.', '1 baño', '45 m² cubiertos'] } },
+      { type: 'location', location: { text: 'Gurruchaga 100, Palermo, Capital Federal' } },
+    ] } };
+  const html = `<script>_n.ctx.r=${JSON.stringify({ results: [card, card] })};</script>`;
+  const r = parsePolycards(html, {});
+  assert.equal(r.length, 1);
+  assert.equal(r[0].url, 'https://departamento.mercadolibre.com.ar/MLA-1-depto-_JM');
+  assert.equal(r[0].operation, 'venta');
+  assert.equal(r[0].type, 'departamento');
+  assert.equal(r[0].rooms, 2);
+  assert.equal(r[0].area_covered, 45);
+  assert.equal(r[0].neighborhood, 'Palermo');
+  assert.equal(r[0].images[0], 'https://http2.mlstatic.com/D_NQ_NP_123-MLA1_102026-O.webp');
+});
+
+test('remax: fila de la API', async () => {
+  const { mapRemax } = await import('../sources/remax.mjs');
+  const l = mapRemax({
+    id: 'abc', slug: 'ph-palermo', title: 'PH en Palermo', location: { type: 'Point', coordinates: [-58.42, -34.58] },
+    totalRooms: 3, bathrooms: 1, price: 150000, priceExposure: true, currency: { value: 'USD' }, expensesPrice: null,
+    displayAddress: 'Thames 100', dimensionTotalBuilt: 80, dimensionCovered: 70, type: { value: 'ph' }, operation: { value: 'sale' },
+    photos: [{ value: 'listings/abc/2.jpg', position: 1 }, { value: 'listings/abc/1.jpg', position: 0 }],
+    addressInfo: 'Palermo, Capital Federal',
+  });
+  assert.equal(l.url, 'https://www.remax.com.ar/listings/ph-palermo');
+  assert.equal(l.type, 'ph');
+  assert.equal(l.operation, 'venta');
+  assert.equal(l.lat, -34.58);
+  assert.equal(l.neighborhood, 'Palermo');
+  assert.equal(l.images[0], 'https://d1acdg20u0pmxj.cloudfront.net/listings/abc/1.jpg');
+});

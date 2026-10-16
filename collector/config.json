@@ -5,10 +5,28 @@
     "argenprop": "capital-federal",
     "zonaprop": "capital-federal",
     "properati": "capital-federal",
-    "mercadolibre_state_id": "TUxBUENBUGw3M2E1"
+    "mercadolibre_state_id": "TUxBUENBUGw3M2E1",
+    "bbox": {
+      "_comentario": "Recuadro de la zona (para RE/MAX). Borralo para todo el país.",
+      "sur": -34.706,
+      "norte": -34.526,
+      "oeste": -58.532,
+      "este": -58.334
+    },
+    "mercadolibre": "capital-federal"
   },
-  "operaciones": ["venta", "alquiler"],
-  "tipos": ["departamento", "ph", "casa", "local", "oficina", "terreno"],
+  "operaciones": [
+    "venta",
+    "alquiler"
+  ],
+  "tipos": [
+    "departamento",
+    "ph",
+    "casa",
+    "local",
+    "oficina",
+    "terreno"
+  ],
   "paginas_por_busqueda": 3,
   "pausa_entre_pedidos_ms": 2500,
   "dias_para_borrar_no_vistos": 10,
@@ -19,5 +37,6 @@
     "zonaprop": true,
     "properati": true,
     "remax": true
-  }
+  },
+  "remax_paginas": 10
 }

@@ -5,7 +5,7 @@
 // leer la página pública de resultados.
 
 import { dumpRaw, fetchJson, fetchText, guessOperation, guessType, sleep, toNumber, uniq } from '../lib/util.mjs';
-import { listingsFromHtml } from '../lib/embedded.mjs';
+import { extractJsonBlobs } from '../lib/embedded.mjs';
 
 const CATEGORY = 'MLA1459'; // Inmuebles
 const OP_SLUG = { venta: 'venta', alquiler: 'alquiler', temporal: 'alquiler-temporal' };
@@ -60,6 +60,53 @@ function mapItem(it) {
   };
 }
 
+// La página pública trae las tarjetas ("polycard") en el estado incrustado.
+const OP_WORDS = { venta: /venta/i, alquiler: /alquiler(?! temporal)/i, temporal: /temporal/i };
+
+export function parsePolycards(html, { operation, type } = {}) {
+  const out = new Map();
+  const seen = new Set();
+  const walk = (v) => {
+    if (!v || typeof v !== 'object' || seen.has(v)) return;
+    seen.add(v);
+    if (v.polycard?.metadata?.id) {
+      const pc = v.polycard;
+      const md = pc.metadata;
+      const comp = Object.fromEntries((pc.components || []).map((c) => [c.type, c[c.type]]));
+      const texts = comp.attributes_list?.texts || [];
+      const num = (re) => { const t = texts.find((x) => re.test(x)); return t ? toNumber(t.match(/\d[\d.,]*/)?.[0]) : null; };
+      const headline = comp.headline?.text || '';
+      const loc = comp.location?.text || '';
+      const parts = loc.split(',').map((x) => x.trim()).filter(Boolean);
+      const url = md.url ? 'https://' + md.url.replace(/^https?:\/\//, '') : null;
+      if (!url) return;
+      out.set(md.id, {
+        source: 'mercadolibre',
+        id: `mercadolibre:${md.id}`,
+        url,
+        title: comp.title?.text || null,
+        operation: Object.keys(OP_WORDS).find((k) => OP_WORDS[k].test(headline)) || operation || null,
+        type: guessType(headline, md.domain_id) || type || null,
+        price: toNumber(comp.price?.current_price?.value ?? md.signal?.price),
+        currency: comp.price?.current_price?.currency || md.signal?.currency || null,
+        address: parts.length > 2 ? parts.slice(0, -2).join(', ') : null,
+        neighborhood: parts.length > 1 ? parts[parts.length - 2] : null,
+        city: parts[parts.length - 1] || null,
+        area_total: num(/m².*tot/i),
+        area_covered: num(/m².*cub/i) ?? num(/m²/),
+        rooms: num(/amb/i),
+        bedrooms: num(/dorm/i),
+        bathrooms: num(/baño/i),
+        images: uniq((pc.pictures?.pictures || []).map((p) => p.id && `https://http2.mlstatic.com/D_NQ_NP_${p.id}-O.webp`)),
+      });
+      return;
+    }
+    for (const k in v) walk(v[k]);
+  };
+  extractJsonBlobs(html).forEach(walk);
+  return [...out.values()];
+}
+
 // Pide las fotos completas en lotes de 20 (la búsqueda trae solo la miniatura).
 async function addPictures(listings, headers) {
   const byId = new Map(listings.map((l) => [l.id.split(':')[1], l]));
@@ -105,16 +152,16 @@ export default {
     }
 
     log('  sin token de API: intento con la página pública');
-    const zona = cfg.zona.argenprop; // mismo slug: capital-federal
+    const zona = cfg.zona.mercadolibre || cfg.zona.argenprop;
     for (const op of cfg.operaciones) {
       for (const type of cfg.tipos) {
         if (!TYPE_SLUG[type]) continue;
         for (let p = 0; p < cfg.paginas_por_busqueda; p++) {
-          const desde = p ? `_Desde_${p * 48 + 1}` : '';
+          const desde = p ? `_Desde_${p * 50 + 1}` : '';
           const url = `https://inmuebles.mercadolibre.com.ar/${TYPE_SLUG[type]}/${OP_SLUG[op]}/${zona}/${desde}`;
           const html = await fetchText(url);
           if (!p && type === cfg.tipos[0] && op === cfg.operaciones[0]) dumpRaw('mercadolibre.html', html);
-          const items = listingsFromHtml(html, { source: 'mercadolibre', base: url, operation: op, type });
+          const items = parsePolycards(html, { operation: op, type });
           out.push(...items);
           log(`  ${type}/${op} p${p + 1}: ${items.length}`);
           if (!items.length) break;
