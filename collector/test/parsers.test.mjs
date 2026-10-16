@@ -120,3 +120,18 @@ test('mercado libre: datos de la página del aviso', async () => {
   assert.equal(d.lat, -34.58);
   assert.equal(d.images.length, 2);
 });
+
+test('inmobiliarias: RealEstateListing de schema.org', async () => {
+  const { mapRealEstateListing } = await import('../sources/inmobiliarias.mjs');
+  const l = mapRealEstateListing({
+    '@type': 'RealEstateListing', name: 'Santa Fe 2300. Alquiler.', url: 'https://x.com/propiedad/a--1', image: 'https://x.com/a.webp',
+    about: { '@type': 'Apartment', address: { streetAddress: 'Santa Fe 2395', addressLocality: 'Palermo', addressRegion: 'Capital Federal' },
+      geo: { latitude: -34.59, longitude: -58.4 }, floorSize: { value: 115 }, numberOfRooms: 4, numberOfBedrooms: 3, numberOfBathroomsTotal: 1 },
+    offers: { '@type': 'OfferForLease', price: 1800000, priceCurrency: 'ARS' },
+  }, { nombre: 'LJ Ramos' });
+  assert.equal(l.operation, 'alquiler');
+  assert.equal(l.type, 'departamento');
+  assert.equal(l.bedrooms, 3);
+  assert.equal(l.neighborhood, 'Palermo');
+  assert.equal(l.publisher, 'LJ Ramos');
+});

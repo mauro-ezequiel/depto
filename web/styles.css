@@ -102,7 +102,7 @@ main { padding: 10px 16px 40px; max-width: 1200px; margin: 0 auto; }
   font-size: 12px; padding: 2px 8px; border-radius: 10px;
 }
 .src {
-  position: absolute; left: 10px; top: 10px; background: rgba(255,255,255,.92); color: #111;
+  position: absolute; left: 10px; top: 10px; max-width: calc(100% - 110px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: rgba(255,255,255,.92); color: #111;
   font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 10px;
 }
 .tag-new { background: var(--new); color: #fff; margin-left: 4px; }

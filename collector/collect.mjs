@@ -11,10 +11,12 @@ import argenprop from './sources/argenprop.mjs';
 import zonaprop from './sources/zonaprop.mjs';
 import properati from './sources/properati.mjs';
 import remax from './sources/remax.mjs';
+import nuroa from './sources/nuroa.mjs';
+import inmobiliarias from './sources/inmobiliarias.mjs';
 import { geocodeListings } from './lib/geocode.mjs';
 import { enrichMercadoLibre } from './lib/details.mjs';
 
-const ALL = [mercadolibre, argenprop, zonaprop, properati, remax];
+const ALL = [mercadolibre, remax, nuroa, inmobiliarias, argenprop, zonaprop, properati];
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = join(ROOT, 'web', 'data');
 
@@ -43,7 +45,7 @@ export async function run(only) {
   const status = { updated_at: now, zona: cfg.zona.nombre, sources: {} };
 
   for (const src of ALL) {
-    if (!cfg.fuentes[src.name] || (only && !only.includes(src.name))) {
+    if (cfg.fuentes[src.name] === false || (only && !only.includes(src.name))) {
       status.sources[src.name] = prevStatus.sources?.[src.name] || { label: src.label, ok: null, count: 0, message: 'desactivada' };
       continue;
     }

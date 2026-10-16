@@ -122,7 +122,7 @@ function apply() {
     if (f.acmax && !(ac && ac <= +f.acmax)) return false;
     if (f.photos && !l.images?.length) return false;
     if (q) {
-      const hay = [l.title, l.address, l.neighborhood, l.city, TYPES[l.type], srcLabel(l.source)].join(' ')
+      const hay = [l.title, l.address, l.neighborhood, l.city, TYPES[l.type], srcLabel(l.source), l.publisher].join(' ')
         .toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
       if (!q.split(/\s+/).every((w) => hay.includes(w))) return false;
     }
@@ -182,7 +182,7 @@ function card(l) {
     <div class="photos">${imgs.length
       ? imgs.map((u, i) => `<img src="${esc(u)}" alt="" loading="${i ? 'lazy' : 'lazy'}" decoding="async" referrerpolicy="no-referrer">`).join('')
       : '<div class="nophoto">Sin fotos</div>'}</div>
-    <span class="src">${esc(srcLabel(l.source))}</span>
+    <span class="src">${esc(srcLabel(l.source))}${l.publisher ? ` · ${esc(l.publisher)}` : ''}</span>
     ${isNew(l) ? '<span class="src tag-new" style="left:auto;right:10px">Nuevo</span>' : (l.images?.length > 1 ? `<span class="count">${l.images.length} fotos</span>` : '')}
     <div class="body">
       <div class="price">${esc(money(l))}${l.expenses ? `<small>+ $ ${nf.format(l.expenses)} exp.</small>` : ''}${l.price_prev && l.price < l.price_prev ? '<span class="drop">▼ bajó</span>' : ''}</div>
@@ -260,6 +260,7 @@ function openDetail(l) {
     ['Localidad', l.city],
     ['Ubicación en el mapa', l.lat != null ? (l.approx ? 'Aproximada (centro del barrio)' : 'Por dirección') : null],
     ['Portal', srcLabel(l.source)],
+    ['Publica', l.publisher],
     ['Visto por primera vez', l.first_seen ? new Date(l.first_seen).toLocaleDateString('es-AR') : null],
   ].filter(([, v]) => v != null && v !== '');
   const map = l.lat && l.lng ? `https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lng}`
@@ -362,7 +363,7 @@ function syncPriceBar() {
 }
 
 // ---------- mapa ----------
-const SRC_COLORS = { mercadolibre: '#e5b800', remax: '#d6262b', argenprop: '#1f6feb', zonaprop: '#f26b1d', properati: '#7b3fe4' };
+const SRC_COLORS = { mercadolibre: '#e5b800', remax: '#d6262b', nuroa: '#14b8a6', inmobiliarias: '#64748b', argenprop: '#1f6feb', zonaprop: '#f26b1d', properati: '#7b3fe4' };
 let map, cluster;
 
 function setMode(mode, initial) {

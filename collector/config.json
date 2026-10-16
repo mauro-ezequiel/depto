@@ -13,7 +13,8 @@
       "oeste": -58.532,
       "este": -58.334
     },
-    "mercadolibre": "capital-federal"
+    "mercadolibre": "capital-federal",
+    "nuroa": "capital-federal"
   },
   "operaciones": [
     "venta",
@@ -33,12 +34,27 @@
   "maximo_avisos": 6000,
   "fuentes": {
     "mercadolibre": true,
+    "remax": true,
+    "nuroa": true,
+    "inmobiliarias": true,
     "argenprop": true,
     "zonaprop": true,
-    "properati": true,
-    "remax": true
+    "properati": true
   },
   "remax_paginas": 10,
   "geocodificar": true,
-  "geocodificar_max": 900
+  "geocodificar_max": 900,
+  "nuroa_paginas": 4,
+  "inmobiliarias": [
+    {
+      "nombre": "LJ Ramos",
+      "url": "https://ljramos.com/propiedades",
+      "paginas": 8
+    },
+    {
+      "nombre": "Coldwell Banker",
+      "url": "https://coldwellbanker.com.ar/propiedades",
+      "paginas": 8
+    }
+  ]
 }
