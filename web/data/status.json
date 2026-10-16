@@ -1,44 +1,44 @@
 {
-  "updated_at": "2026-10-16T19:42:50.557Z",
+  "updated_at": "2026-10-16T19:47:46.865Z",
   "zona": "Capital Federal",
   "sources": {
     "mercadolibre": {
       "label": "Mercado Libre",
       "ok": true,
-      "count": 1777,
-      "new": 593,
-      "at": "2026-10-16T19:42:50.557Z",
-      "secs": 120
+      "count": 1692,
+      "new": 1098,
+      "at": "2026-10-16T19:47:46.865Z",
+      "secs": 113
     },
     "argenprop": {
       "label": "Argenprop",
       "ok": false,
       "count": 0,
-      "at": "2026-10-16T19:42:50.557Z",
+      "at": "2026-10-16T19:47:46.865Z",
       "message": "El portal bloquea la lectura automática (protección anti-bots)"
     },
     "zonaprop": {
       "label": "Zonaprop",
       "ok": false,
       "count": 0,
-      "at": "2026-10-16T19:42:50.557Z",
+      "at": "2026-10-16T19:47:46.865Z",
       "message": "El portal bloquea la lectura automática (protección anti-bots)"
     },
     "properati": {
       "label": "Properati",
       "ok": false,
       "count": 0,
-      "at": "2026-10-16T19:42:50.557Z",
+      "at": "2026-10-16T19:47:46.865Z",
       "message": "El portal bloquea la lectura automática (protección anti-bots)"
     },
     "remax": {
       "label": "RE/MAX",
       "ok": true,
-      "count": 579,
-      "new": 291,
-      "at": "2026-10-16T19:42:50.557Z",
-      "secs": 53
+      "count": 583,
+      "new": 7,
+      "at": "2026-10-16T19:47:46.865Z",
+      "secs": 50
     }
   },
-  "total": 884
+  "total": 1989
 }
