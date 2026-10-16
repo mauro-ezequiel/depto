@@ -1,0 +1,26 @@
+name: Probar portales
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tools/probe.mjs
+      - name: Guardar resultado
+        run: |
+          git config user.name "depto-bot"
+          git config user.email "depto-bot@users.noreply.github.com"
+          git add -f debug
+          git commit -m "Prueba de portales" || exit 0
+          git pull --rebase origin main
+          git push
