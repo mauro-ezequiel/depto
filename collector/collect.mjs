@@ -64,7 +64,8 @@ export async function run(only) {
       status.sources[src.name] = { label: src.label, ok: true, count: items.length, new: nuevos, at: now, secs: Math.round((Date.now() - t0) / 1000) };
       log(`listo: ${items.length} avisos (${nuevos} nuevos)`);
     } catch (e) {
-      status.sources[src.name] = { label: src.label, ok: false, count: 0, at: now, message: e.message.slice(0, 200) };
+      const blocked = [401, 403, 405, 429].includes(e.status);
+      status.sources[src.name] = { label: src.label, ok: false, count: 0, at: now, message: blocked ? 'El portal bloquea la lectura automática (protección anti-bots)' : e.message.slice(0, 200) };
       log(`ERROR: ${e.message}`);
     }
   }

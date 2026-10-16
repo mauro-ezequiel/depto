@@ -10,13 +10,15 @@ Una app que junta avisos de departamentos, PH, casas, locales, oficinas y terren
 
 ## Portales
 
-| Portal | Cómo se lee | Notas |
+| Portal | Estado | Cómo se lee |
 |---|---|---|
-| Mercado Libre | API oficial | Necesita una app gratis de desarrollador (ver abajo). Sin eso intenta la página pública. |
-| Argenprop | HTML del listado | |
-| Zonaprop | Datos incrustados en la página | Tiene protección anti-bots fuerte; puede bloquear a los servidores de GitHub. |
-| Properati | Datos incrustados (Next.js) | |
-| RE/MAX | API JSON de su web | |
+| Mercado Libre | Funciona | Tarjetas de la página pública de resultados (o la API oficial si cargás `ML_CLIENT_ID`/`ML_CLIENT_SECRET`). |
+| RE/MAX | Funciona | API JSON de su web; se filtra por el recuadro `zona.bbox` de la config. |
+| Argenprop | Bloqueado | Pide verificación humana (AWS WAF) a los servidores de GitHub. |
+| Zonaprop | Bloqueado | Desafío de Cloudflare. |
+| Properati | Bloqueado | Responde "Access Denied". |
+
+Los portales bloqueados quedan activados por si abren el acceso; no se intenta saltear sus protecciones.
 
 Cada portal es independiente: si uno falla, los demás siguen. En la app, "Estado de portales" muestra cuántos avisos trajo cada uno en la última corrida o por qué falló.
 
