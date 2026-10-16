@@ -4,6 +4,7 @@ const UA =
   'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36';
 
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
 
 // Con DEBUG_DUMP=1 guarda muestras crudas en debug/ para ajustar los lectores.
 export function dump(name, data) {
@@ -11,6 +12,14 @@ export function dump(name, data) {
   try {
     mkdirSync('debug', { recursive: true });
     writeFileSync(`debug/${name}.json`, JSON.stringify(data, null, 2).slice(0, 200000));
+  } catch { /* no es crítico */ }
+}
+
+export function dumpRaw(name, text) {
+  if (!process.env.DEBUG_DUMP) return;
+  try {
+    mkdirSync('debug', { recursive: true });
+    writeFileSync(`debug/${name}.gz`, gzipSync(text));
   } catch { /* no es crítico */ }
 }
 

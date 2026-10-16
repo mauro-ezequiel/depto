@@ -1,6 +1,6 @@
 // RE/MAX Argentina: la web pide los avisos a una API JSON propia.
 // Probamos esa API y, si cambia, leemos el estado incrustado en la página.
-import { dump, fetchJson, fetchText, sleep } from '../lib/util.mjs';
+import { dump, dumpRaw, fetchJson, fetchText, sleep } from '../lib/util.mjs';
 import { findListingObjects, listingsFromHtml, mapGeneric } from '../lib/embedded.mjs';
 
 const OP_ID = { venta: 1, alquiler: 2, temporal: 3 };
@@ -37,7 +37,12 @@ export default {
         }
         if (!items.length) {
           const url = `https://www.remax.com.ar/listings/${OP_PATH[op]}?page=${page}&pageSize=48&sort=-createdAt`;
-          items = listingsFromHtml(await fetchText(url), { ...ctx, base: url });
+          const html = await fetchText(url);
+          if (page === 0) dumpRaw(`remax-${op}.html`, html);
+          if (page === 0 && process.env.DEBUG_DUMP) {
+            try { dumpRaw(`remax-api-${op}.json`, await fetchText(`https://api-ar.redremax.com/remaxweb-ar/api/listings/findAll?page=0&pageSize=5&sort=-createdAt&in:operationId=${OP_ID[op]}`)); } catch { /* sólo debug */ }
+          }
+          items = listingsFromHtml(html, { ...ctx, base: url });
         }
         log(`  ${op} p${page + 1}: ${items.length}`);
         out.push(...items);
