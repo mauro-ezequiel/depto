@@ -158,6 +158,12 @@ export default {
     const seen = new Set();
 
     // Lee una búsqueda completa (hasta maxPages). Devuelve el total que informa ML.
+    const stats = [];
+    // Rangos de precio para partir búsquedas que siguen pasando el límite de ML
+    const RANGES = {
+      venta: [[0, 60000], [60000, 90000], [90000, 120000], [120000, 160000], [160000, 220000], [220000, 320000], [320000, 500000], [500000, 1000000], [1000000, 100000000]].map(([a, b]) => `_PriceRange_${a}USD-${b}USD`),
+      alquiler: [[0, 400000], [400000, 550000], [550000, 700000], [700000, 900000], [900000, 1200000], [1200000, 1800000], [1800000, 100000000000]].map(([a, b]) => `_PriceRange_${a}ARS-${b}ARS`),
+    };
     const crawlSearch = async (base, op, type, label) => {
       let total = null, n = 0;
       for (let p = 0; p < maxPages; p++) {
@@ -180,6 +186,7 @@ export default {
         await sleep(pause);
       }
       log(`  ${label}: ${n} (ML informa ${total ?? '?'})`);
+      stats.push(`${label}:${n}/${total ?? '?'}`);
       return total;
     };
 
@@ -191,11 +198,15 @@ export default {
         // Si hay más de lo que ML deja ver en una búsqueda, la partimos por barrio
         if (total > maxPages * 50 && cfg.zona.barrios?.length) {
           for (const barrio of cfg.zona.barrios) {
-            await crawlSearch(`${base}${barrio}/`, op, type, `${type}/${op}/${barrio}`);
+            const t = await crawlSearch(`${base}${barrio}/`, op, type, `${type}/${op}/${barrio}`);
+            if (t > maxPages * 50) {
+              for (const r of RANGES[op] || []) await crawlSearch(`${base}${barrio}/${r}`, op, type, `${type}/${op}/${barrio}${r.replace('_PriceRange', '')}`);
+            }
           }
         }
       }
     }
+    if (process.env.GITHUB_ACTIONS) console.log(`::notice title=Mercado Libre::${stats.join(' ')}`);
     return out;
   },
 };
