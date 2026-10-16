@@ -51,7 +51,9 @@ button, input, select { font: inherit; color: inherit; }
 }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 18px; letter-spacing: -.01em; }
 .brand img { border-radius: 7px; }
-.brand .pill { margin-left: auto; }
+.brand > span { margin-right: auto; }
+.brand .pill { height: 36px; padding: 0 14px; font-size: 15px; }
+.brand .ghostpill { background: var(--card); color: var(--text); border-color: var(--line); font-weight: 500; }
 .searchrow { display: flex; gap: 8px; margin-top: 10px; }
 .searchrow input {
   flex: 1; min-width: 0; height: 42px; padding: 0 14px;
@@ -163,7 +165,6 @@ a.primary { display: grid; place-items: center; text-decoration: none; }
 .toast button { margin-left: 10px; background: none; border: 0; color: var(--accent); font-weight: 700; cursor: pointer; }
 
 /* Barra de precio */
-.tabs .view { margin-left: auto; }
 .pricebar { display: flex; gap: 6px; margin-top: 8px; }
 .pricebar select, .pricebar input {
   height: 38px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); padding: 0 10px; min-width: 0;

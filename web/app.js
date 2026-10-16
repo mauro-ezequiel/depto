@@ -190,13 +190,15 @@ function card(l) {
       ${place(l) ? `<div class="place">${esc(place(l))}</div>` : ''}
       ${l.title ? `<div class="title">${esc(l.title)}</div>` : ''}
       <div class="cardfoot">
-        <button class="ibtn" data-act="fav" aria-label="Guardar">${state.favs.has(l.id) ? '♥ Guardado' : '♡ Guardar'}</button>
+        <button class="ibtn" data-act="fav" aria-label="Guardar">${state.favs.has(l.id) ? '♥' : '♡'}</button>
+        ${l.lat != null || place(l) ? '<button class="ibtn" data-act="map">📍 Mapa</button>' : ''}
         <a class="go" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">Ver en ${esc(srcLabel(l.source))} ↗</a>
       </div>
     </div>`;
   el.addEventListener('click', (e) => {
     const act = e.target.closest('[data-act]')?.dataset.act;
-    if (act === 'fav') { e.stopPropagation(); toggleFav(l, e.target); return; }
+    if (act === 'fav') { e.stopPropagation(); toggleFav(l, e.target.closest('button'), true); return; }
+    if (act === 'map') { e.stopPropagation(); showOnMap(l); return; }
     if (e.target.closest('a')) return;
     openDetail(l);
   });
@@ -212,10 +214,25 @@ function renderMore() {
   state.shown += next.length;
 }
 
-function toggleFav(l, btn) {
+function toggleFav(l, btn, short) {
   if (state.favs.has(l.id)) state.favs.delete(l.id); else state.favs.add(l.id);
   store.set('favs', [...state.favs]);
-  if (btn) btn.textContent = state.favs.has(l.id) ? '♥ Guardado' : '♡ Guardar';
+  const on = state.favs.has(l.id);
+  if (btn) btn.textContent = short ? (on ? '♥' : '♡') : (on ? '♥ Guardado' : '♡ Guardar');
+}
+
+// Botón "Mapa" de cada aviso: lo muestra en nuestro mapa; si no tiene coordenadas, en Google Maps.
+function showOnMap(l) {
+  if (l.lat == null) {
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place(l))}`, '_blank', 'noopener');
+    return;
+  }
+  renderMap.fitted = true;
+  setMode('map');
+  map.setView([l.lat, l.lng], l.approx ? 15 : 17);
+  L.popup({ offset: [0, -24] }).setLatLng([l.lat, l.lng])
+    .setContent(`<b>${esc(money(l))}</b><br>${esc(place(l))}${l.approx ? '<br><small>Ubicación aproximada</small>' : ''}`)
+    .openOn(map);
 }
 
 function toggleHidden(l) {
@@ -261,7 +278,7 @@ function openDetail(l) {
         <button type="button" class="ghost" data-act="hide">${state.hidden.has(l.id) ? 'Recuperar' : 'Descartar'}</button>
       </div>
       <div class="actions" style="position:static">
-        ${map ? `<a class="ghost" style="flex:1;height:46px;border-radius:12px;display:grid;place-items:center;text-decoration:none;font-weight:600" href="${esc(map)}" target="_blank" rel="noopener">Mapa</a>` : ''}
+        ${map ? `<button type="button" class="ghost" style="flex:1" data-act="map">📍 Mapa</button>` : ''}
         <a class="primary" style="flex:2;height:46px;border-radius:12px;font-weight:700" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">Ver en ${esc(srcLabel(l.source))} ↗</a>
       </div>
       ${navigator.share ? '<div class="actions" style="position:static"><button type="button" class="ghost" data-act="share">Compartir</button></div>' : ''}
@@ -274,6 +291,7 @@ function openDetail(l) {
     const a = act.dataset.act;
     if (a === 'fav') { toggleFav(l, act); apply(); }
     if (a === 'hide') { toggleHidden(l); d.close(); apply(); toast(state.hidden.has(l.id) ? 'Aviso descartado' : 'Aviso recuperado'); }
+    if (a === 'map') { d.close(); showOnMap(l); }
     if (a === 'share') navigator.share({ title: l.title || 'Aviso', url: l.url }).catch(() => {});
   };
   d.showModal();
@@ -461,6 +479,12 @@ function init() {
   $('#installBtn').onclick = async () => { $('#installBtn').classList.add('hidden'); deferred?.prompt(); deferred = null; };
 
   if ('serviceWorker' in navigator) {
+    // Cuando se publica una versión nueva, la app se recarga sola
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (hadController && !reloaded) { reloaded = true; location.reload(); }
+    });
     navigator.serviceWorker.register('sw.js').then((reg) => {
       setInterval(() => reg.update(), REFRESH_MS);
       reg.addEventListener('updatefound', () => {

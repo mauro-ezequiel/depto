@@ -22,7 +22,8 @@
     <div class="brand">
       <img src="icons/icon.svg" alt="" width="28" height="28">
       <span>Depto</span>
-      <button id="installBtn" class="pill hidden" type="button">Instalar</button>
+      <button id="installBtn" class="pill ghostpill hidden" type="button">Instalar</button>
+      <button id="viewBtn" class="pill" type="button" aria-pressed="false">🗺 Mapa</button>
     </div>
     <div class="searchrow">
       <input id="q" type="search" placeholder="Buscar barrio, calle, palabra…" autocomplete="off" enterkeyhint="search">
@@ -35,7 +36,6 @@
       <button data-op="venta" class="chip on">Comprar</button>
       <button data-op="alquiler" class="chip">Alquilar</button>
       <button data-op="fav" class="chip">♥ Guardados</button>
-      <button id="viewBtn" class="chip view" type="button" aria-pressed="false">🗺 Mapa</button>
     </nav>
     <div class="pricebar" id="pricebar">
       <select id="pcur" aria-label="Moneda"><option value="USD">USD</option><option value="ARS">$</option></select>
