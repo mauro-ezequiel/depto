@@ -49,6 +49,7 @@ jobs:
           git add web/data collector/geocache.json
           if [ -d debug ]; then git add -f debug; fi
           git diff --cached --quiet || git commit -m "Avisos actualizados $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase -X theirs origin main
           git push
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
