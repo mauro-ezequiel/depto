@@ -1,0 +1,11 @@
+{
+  "url": "https://www.properati.com.ar/s/capital-federal/casa/venta",
+  "headers": {
+    "connection": "keep-alive",
+    "content-type": "text/plain",
+    "date": "Fri, 16 Oct 2026 19:44:51 GMT",
+    "server": "Jetty(9.4.58.v20250814)",
+    "transfer-encoding": "chunked"
+  },
+  "body": "Access Denied"
+}

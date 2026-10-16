@@ -1,44 +1,44 @@
 {
-  "updated_at": "2026-10-16T19:39:12.745Z",
+  "updated_at": "2026-10-16T19:42:50.557Z",
   "zona": "Capital Federal",
   "sources": {
     "mercadolibre": {
       "label": "Mercado Libre",
       "ok": true,
-      "count": 0,
-      "new": 0,
-      "at": "2026-10-16T19:39:12.745Z",
-      "secs": 10
+      "count": 1777,
+      "new": 593,
+      "at": "2026-10-16T19:42:50.557Z",
+      "secs": 120
     },
     "argenprop": {
       "label": "Argenprop",
       "ok": false,
       "count": 0,
-      "at": "2026-10-16T19:39:12.745Z",
-      "message": "HTTP 405 en https://www.argenprop.com/casas/venta/capital-federal"
+      "at": "2026-10-16T19:42:50.557Z",
+      "message": "El portal bloquea la lectura automática (protección anti-bots)"
     },
     "zonaprop": {
       "label": "Zonaprop",
       "ok": false,
       "count": 0,
-      "at": "2026-10-16T19:39:12.745Z",
-      "message": "HTTP 403 en https://www.zonaprop.com.ar/departamentos-venta-capital-federal.html"
+      "at": "2026-10-16T19:42:50.557Z",
+      "message": "El portal bloquea la lectura automática (protección anti-bots)"
     },
     "properati": {
       "label": "Properati",
       "ok": false,
       "count": 0,
-      "at": "2026-10-16T19:39:12.745Z",
-      "message": "HTTP 401 en https://www.properati.com.ar/s/capital-federal/casa/venta"
+      "at": "2026-10-16T19:42:50.557Z",
+      "message": "El portal bloquea la lectura automática (protección anti-bots)"
     },
     "remax": {
       "label": "RE/MAX",
       "ok": true,
-      "count": 288,
-      "new": 3,
-      "at": "2026-10-16T19:39:12.745Z",
-      "secs": 31
+      "count": 579,
+      "new": 291,
+      "at": "2026-10-16T19:42:50.557Z",
+      "secs": 53
     }
   },
-  "total": 167
+  "total": 884
 }
