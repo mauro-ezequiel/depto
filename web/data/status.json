@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-16T19:37:33.607Z",
+  "updated_at": "2026-10-16T19:39:12.745Z",
   "zona": "Capital Federal",
   "sources": {
     "mercadolibre": {
@@ -7,38 +7,38 @@
       "ok": true,
       "count": 0,
       "new": 0,
-      "at": "2026-10-16T19:37:33.607Z",
-      "secs": 8
+      "at": "2026-10-16T19:39:12.745Z",
+      "secs": 10
     },
     "argenprop": {
       "label": "Argenprop",
       "ok": false,
       "count": 0,
-      "at": "2026-10-16T19:37:33.607Z",
+      "at": "2026-10-16T19:39:12.745Z",
       "message": "HTTP 405 en https://www.argenprop.com/casas/venta/capital-federal"
     },
     "zonaprop": {
       "label": "Zonaprop",
       "ok": false,
       "count": 0,
-      "at": "2026-10-16T19:37:33.607Z",
+      "at": "2026-10-16T19:39:12.745Z",
       "message": "HTTP 403 en https://www.zonaprop.com.ar/departamentos-venta-capital-federal.html"
     },
     "properati": {
       "label": "Properati",
       "ok": false,
       "count": 0,
-      "at": "2026-10-16T19:37:33.607Z",
+      "at": "2026-10-16T19:39:12.745Z",
       "message": "HTTP 401 en https://www.properati.com.ar/s/capital-federal/casa/venta"
     },
     "remax": {
       "label": "RE/MAX",
       "ok": true,
       "count": 288,
-      "new": 5,
-      "at": "2026-10-16T19:37:33.607Z",
-      "secs": 30
+      "new": 3,
+      "at": "2026-10-16T19:39:12.745Z",
+      "secs": 31
     }
   },
-  "total": 164
+  "total": 167
 }
