@@ -81,7 +81,14 @@ export default {
         let n = 0;
         for (let page = 1; page <= pages; page++) {
           const url = `https://www.nuroa.com.ar/${OPS[op]}/${TYPES[type]}-${zona}${page > 1 ? `?page=${page}` : ''}`;
-          const items = parseNuroa(await fetchText(url), { operation: op, type, box: cfg.zona.bbox });
+          let items;
+          try {
+            items = parseNuroa(await fetchText(url), { operation: op, type, box: cfg.zona.bbox });
+          } catch (e) {
+            log(`  ${type}/${op} p${page}: ${e.message}`);
+            if (e.status === 403 || e.status === 429) throw e;
+            break; // un error suelto (ej. 500) no frena las demás búsquedas
+          }
           n += items.length;
           out.push(...items);
           if (!items.length) break;

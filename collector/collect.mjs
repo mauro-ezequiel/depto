@@ -83,6 +83,16 @@ export async function run(only) {
   listings = listings.slice(0, cfg.maximo_avisos);
   status.total = listings.length;
 
+  // Coordenadas fuera de la zona (ej. el centro de Argentina que ponen por defecto) no sirven
+  const box = cfg.zona.bbox;
+  if (box) {
+    for (const l of listings) {
+      if (l.lat != null && !(l.lat >= box.sur && l.lat <= box.norte && l.lng >= box.oeste && l.lng <= box.este)) {
+        delete l.lat; delete l.lng; delete l.approx;
+      }
+    }
+  }
+
   if (cfg.detalles !== false && (!only || only.includes('mercadolibre'))) {
     const log = (m) => console.log(`[detalles] ${m}`);
     try { await enrichMercadoLibre(listings, cfg, log); } catch (e) { log(`ERROR: ${e.message}`); }
