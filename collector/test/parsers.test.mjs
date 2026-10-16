@@ -108,3 +108,15 @@ test('remax: fila de la API', async () => {
   assert.equal(l.neighborhood, 'Palermo');
   assert.equal(l.images[0], 'https://d1acdg20u0pmxj.cloudfront.net/listings/abc/1.jpg');
 });
+
+test('mercado libre: datos de la página del aviso', async () => {
+  const { parseMlDetail } = await import('../lib/details.mjs');
+  const html = `{"name":"Dormitorios","value_name":"2"},{"name":"Superficie total","value_name":"80 m²"},{"name":"Superficie cubierta","value_name":"70 m²"},{"name":"Baños","value_name":"1"} "latitude":-34.58,"longitude":-58.42 https://http2.mlstatic.com/D_NQ_NP_2X_111-MLA9_102026-F.webp https://http2.mlstatic.com/D_NQ_NP_222-MLA9_102026-O.jpg`;
+  const d = parseMlDetail(html);
+  assert.equal(d.bedrooms, 2);
+  assert.equal(d.area_total, 80);
+  assert.equal(d.area_covered, 70);
+  assert.equal(d.bathrooms, 1);
+  assert.equal(d.lat, -34.58);
+  assert.equal(d.images.length, 2);
+});

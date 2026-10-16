@@ -64,18 +64,30 @@
         <div class="chips wrap" id="typeChips"></div>
       </fieldset>
       <fieldset>
-        <legend>Ambientes (mínimo)</legend>
-        <div class="chips" id="roomChips">
-          <button type="button" data-v="" class="chip on">Todos</button>
-          <button type="button" data-v="1" class="chip">1+</button>
-          <button type="button" data-v="2" class="chip">2+</button>
-          <button type="button" data-v="3" class="chip">3+</button>
-          <button type="button" data-v="4" class="chip">4+</button>
+        <legend>Ambientes</legend>
+        <div class="chips" id="roomChips"><button type="button" data-v="" class="chip on">Todos</button><button type="button" data-v="1" class="chip">1+</button><button type="button" data-v="2" class="chip">2+</button><button type="button" data-v="3" class="chip">3+</button><button type="button" data-v="4" class="chip">4+</button><button type="button" data-v="5" class="chip">5+</button></div>
+      </fieldset>
+      <fieldset>
+        <legend>Dormitorios</legend>
+        <div class="chips" id="bedChips"><button type="button" data-v="" class="chip on">Todos</button><button type="button" data-v="1" class="chip">1+</button><button type="button" data-v="2" class="chip">2+</button><button type="button" data-v="3" class="chip">3+</button><button type="button" data-v="4" class="chip">4+</button></div>
+      </fieldset>
+      <fieldset>
+        <legend>Baños</legend>
+        <div class="chips" id="bathChips"><button type="button" data-v="" class="chip on">Todos</button><button type="button" data-v="1" class="chip">1+</button><button type="button" data-v="2" class="chip">2+</button><button type="button" data-v="3" class="chip">3+</button></div>
+      </fieldset>
+      <fieldset>
+        <legend>Superficie total (m²)</legend>
+        <div class="row">
+          <input name="atmin" type="number" inputmode="numeric" placeholder="Mínimo">
+          <input name="atmax" type="number" inputmode="numeric" placeholder="Máximo">
         </div>
       </fieldset>
       <fieldset>
-        <legend>Superficie mínima (m²)</legend>
-        <input name="amin" type="number" inputmode="numeric" placeholder="Ej: 40">
+        <legend>Superficie cubierta (m²)</legend>
+        <div class="row">
+          <input name="acmin" type="number" inputmode="numeric" placeholder="Mínimo">
+          <input name="acmax" type="number" inputmode="numeric" placeholder="Máximo">
+        </div>
       </fieldset>
       <fieldset>
         <legend>Portales</legend>

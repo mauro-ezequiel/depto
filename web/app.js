@@ -25,7 +25,7 @@ const state = {
   lastVisit: store.get('lastVisit', null),
   f: Object.assign(
     {
-      q: '', op: 'venta', types: [], sources: [], rooms: '', amin: '', sort: 'new', photos: false, showHidden: false,
+      q: '', op: 'venta', types: [], sources: [], rooms: '', beds: '', baths: '', atmin: '', atmax: '', acmin: '', acmax: '', sort: 'new', photos: false, showHidden: false,
       // precio aparte para comprar y para alquilar
       price: { venta: { cur: 'USD', min: '', max: '' }, alquiler: { cur: 'ARS', min: '', max: '' } },
     },
@@ -56,13 +56,18 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const srcLabel = (s) => state.status?.sources?.[s]?.label || s;
 function feats(l) {
   const f = [];
-  const area = l.area_total || l.area_covered;
-  if (area) f.push(`${nf.format(area)} m²`);
+  if (l.area_total) f.push(`${nf.format(l.area_total)} m² tot.`);
+  if (l.area_covered && l.area_covered !== l.area_total) f.push(`${nf.format(l.area_covered)} m² cub.`);
   if (l.rooms) f.push(`${l.rooms} amb.`);
   if (l.bedrooms) f.push(`${l.bedrooms} dorm.`);
   if (l.bathrooms) f.push(`${l.bathrooms} baño${l.bathrooms > 1 ? 's' : ''}`);
   return f;
 }
+const CHIP_FILTERS = [['roomChips', 'rooms'], ['bedChips', 'beds'], ['bathChips', 'baths']];
+const AREA_FIELDS = ['atmin', 'atmax', 'acmin', 'acmax'];
+const NUM_FILTERS = ['rooms', 'beds', 'baths', ...AREA_FIELDS];
+// Si el aviso no dice dormitorios, se estima como ambientes - 1 (convención en Argentina).
+const bedrooms = (l) => l.bedrooms ?? (l.rooms > 1 ? l.rooms - 1 : null);
 const place = (l) => [l.address, l.neighborhood, l.city].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ');
 const isNew = (l) => state.lastVisit && l.first_seen && l.first_seen > state.lastVisit;
 const pricePerM2 = (l) => (l.price && (l.area_total || l.area_covered) ? l.price / (l.area_total || l.area_covered) : null);
@@ -108,7 +113,13 @@ function apply() {
     if (f.types.length && !f.types.includes(l.type)) return false;
     if (f.sources.length && !f.sources.includes(l.source)) return false;
     if (f.rooms && !(l.rooms >= +f.rooms)) return false;
-    if (f.amin && !((l.area_total || l.area_covered) >= +f.amin)) return false;
+    if (f.beds && !(bedrooms(l) >= +f.beds)) return false;
+    if (f.baths && !(l.bathrooms >= +f.baths)) return false;
+    const at = l.area_total || l.area_covered, ac = l.area_covered || l.area_total;
+    if (f.atmin && !(at >= +f.atmin)) return false;
+    if (f.atmax && !(at && at <= +f.atmax)) return false;
+    if (f.acmin && !(ac >= +f.acmin)) return false;
+    if (f.acmax && !(ac && ac <= +f.acmax)) return false;
     if (f.photos && !l.images?.length) return false;
     if (q) {
       const hay = [l.title, l.address, l.neighborhood, l.city, TYPES[l.type], srcLabel(l.source)].join(' ')
@@ -134,7 +145,7 @@ function apply() {
   if (state.mode === 'map') renderMap(); else renderMore();
   store.set('filters', { ...f, q: f.q });
   const active = ['types', 'sources'].reduce((n, k) => n + (f[k].length ? 1 : 0), 0)
-    + ['rooms', 'amin'].filter((k) => f[k]).length + (f.photos ? 1 : 0) + (f.sort !== 'new' ? 1 : 0);
+    + NUM_FILTERS.filter((k) => f[k]).length + (f.photos ? 1 : 0) + (f.sort !== 'new' ? 1 : 0);
   $('#filterCount').textContent = active;
   $('#filterCount').classList.toggle('hidden', !active);
   document.querySelectorAll('#opChips .chip[data-op]').forEach((b) => b.classList.toggle('on', b.dataset.op === f.op));
@@ -302,20 +313,20 @@ function buildFilterChips() {
 
 function syncForm() {
   const fm = $('#filterForm');
-  for (const k of ['amin', 'sort']) fm.elements[k].value = state.f[k];
+  for (const k of [...AREA_FIELDS, 'sort']) fm.elements[k].value = state.f[k];
   fm.elements.photos.checked = state.f.photos;
   fm.elements.showHidden.checked = state.f.showHidden;
-  document.querySelectorAll('#roomChips .chip').forEach((b) => b.classList.toggle('on', b.dataset.v === String(state.f.rooms)));
+  for (const [id, k] of CHIP_FILTERS) document.querySelectorAll(`#${id} .chip`).forEach((b) => b.classList.toggle('on', b.dataset.v === String(state.f[k])));
 }
 
 function readForm() {
   const fm = $('#filterForm');
-  for (const k of ['amin', 'sort']) state.f[k] = fm.elements[k].value;
+  for (const k of [...AREA_FIELDS, 'sort']) state.f[k] = fm.elements[k].value;
   state.f.photos = fm.elements.photos.checked;
   state.f.showHidden = fm.elements.showHidden.checked;
   state.f.types = [...document.querySelectorAll('#typeChips .chip.on')].map((b) => b.dataset.v);
   state.f.sources = [...document.querySelectorAll('#sourceChips .chip.on')].map((b) => b.dataset.v);
-  state.f.rooms = document.querySelector('#roomChips .chip.on')?.dataset.v || '';
+  for (const [id, k] of CHIP_FILTERS) state.f[k] = document.querySelector(`#${id} .chip.on`)?.dataset.v || '';
 }
 
 // ---------- precio (barra rápida) ----------
@@ -422,14 +433,14 @@ function init() {
   $('#filters').addEventListener('click', (e) => {
     const chip = e.target.closest('.chip');
     if (chip) {
-      if (chip.parentElement.id === 'roomChips') chip.parentElement.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === chip));
+      if (CHIP_FILTERS.some(([id]) => id === chip.parentElement.id)) chip.parentElement.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === chip));
       else chip.classList.toggle('on');
     }
     if (e.target === $('#filters')) $('#filters').close();
   });
   $('#filterForm').addEventListener('submit', () => { readForm(); apply(); window.scrollTo({ top: 0 }); });
   $('#resetFilters').onclick = () => {
-    Object.assign(state.f, { types: [], sources: [], rooms: '', amin: '', sort: 'new', photos: false, showHidden: false });
+    Object.assign(state.f, { types: [], sources: [], sort: 'new', photos: false, showHidden: false }, Object.fromEntries(NUM_FILTERS.map((k) => [k, ''])));
     buildFilterChips(); syncForm();
   };
 

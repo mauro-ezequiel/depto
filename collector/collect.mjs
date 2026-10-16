@@ -12,6 +12,7 @@ import zonaprop from './sources/zonaprop.mjs';
 import properati from './sources/properati.mjs';
 import remax from './sources/remax.mjs';
 import { geocodeListings } from './lib/geocode.mjs';
+import { enrichMercadoLibre } from './lib/details.mjs';
 
 const ALL = [mercadolibre, argenprop, zonaprop, properati, remax];
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -57,6 +58,8 @@ export async function run(only) {
         if (!old) nuevos++;
         byId.set(it.id, compact({
           ...old, ...it,
+          // la página del aviso trae más fotos que el listado: no las pisamos
+          images: (old?.images?.length || 0) > (it.images?.length || 0) ? old.images : it.images,
           first_seen: old?.first_seen || now,
           last_seen: now,
           price_prev: old && old.price && it.price && old.price !== it.price ? old.price : old?.price_prev,
@@ -77,6 +80,11 @@ export async function run(only) {
   listings.sort((a, b) => (b.first_seen || '').localeCompare(a.first_seen || ''));
   listings = listings.slice(0, cfg.maximo_avisos);
   status.total = listings.length;
+
+  if (cfg.detalles !== false && (!only || only.includes('mercadolibre'))) {
+    const log = (m) => console.log(`[detalles] ${m}`);
+    try { await enrichMercadoLibre(listings, cfg, log); } catch (e) { log(`ERROR: ${e.message}`); }
+  }
 
   if (cfg.geocodificar !== false && !only) {
     const log = (m) => console.log(`[mapa] ${m}`);
