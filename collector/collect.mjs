@@ -1,8 +1,9 @@
-// Recolector: lee cada portal, normaliza, mezcla con lo que ya teníamos
-// y escribe web/data/listings.json + web/data/status.json.
+// Recolector: lee cada portal, normaliza y mezcla con lo que ya teníamos.
+// La base completa vive en state/ (fuera de git, se guarda en la caché de GitHub Actions);
+// la app recibe web/data/venta.json, web/data/alquiler.json y web/data/status.json.
 // Uso: node collector/collect.mjs [fuente1,fuente2]
 
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, copyFile, access, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -19,6 +20,17 @@ import { enrichMercadoLibre } from './lib/details.mjs';
 const ALL = [mercadolibre, remax, nuroa, inmobiliarias, argenprop, zonaprop, properati];
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = join(ROOT, 'web', 'data');
+const STATE = process.env.DEPTO_STATE || join(ROOT, 'state');
+
+const exists = (p) => access(p).then(() => true, () => false);
+
+// Lo que se publica para la app: sin campos internos y con menos decimales.
+function forApp(l) {
+  const { last_seen, detail_at, detail_v, ...o } = l;
+  if (o.lat != null) { o.lat = +o.lat.toFixed(5); o.lng = +o.lng.toFixed(5); }
+  if (o.images?.length > 10) o.images = o.images.slice(0, 10);
+  return o;
+}
 
 async function readJson(p, fallback) {
   try { return JSON.parse(await readFile(p, 'utf8')); } catch { return fallback; }
@@ -37,12 +49,23 @@ function compact(l) {
 export async function run(only) {
   const cfg = await readJson(join(ROOT, 'collector', 'config.json'), null);
   if (!cfg) throw new Error('Falta collector/config.json');
-  const prev = await readJson(join(DATA, 'listings.json'), { listings: [] });
-  const prevStatus = await readJson(join(DATA, 'status.json'), { sources: {} });
+  await mkdir(STATE, { recursive: true });
+  // Primera vez: arrancamos desde lo que había publicado antes
+  const prev = await readJson(join(STATE, 'listings.json'), null)
+    || await readJson(join(DATA, 'listings.json'), { listings: [] });
+  const geocache = join(STATE, 'geocache.json');
+  if (!(await exists(geocache)) && (await exists(join(ROOT, 'collector', 'geocache.json')))) {
+    await copyFile(join(ROOT, 'collector', 'geocache.json'), geocache);
+  }
+  const prevStatus = await readJson(join(STATE, 'status.json'), null)
+    || await readJson(join(DATA, 'status.json'), { sources: {} });
+  // "solo publicar": no lee portales, solo arma los archivos de la app desde la base guardada
+  const publishOnly = Array.isArray(only) && !only.length;
   const now = new Date().toISOString();
 
   const byId = new Map(prev.listings.map((l) => [l.id, l]));
-  const status = { updated_at: now, zona: cfg.zona.nombre, sources: {} };
+  const status = publishOnly ? { ...prevStatus, sources: { ...prevStatus.sources } }
+    : { updated_at: now, zona: cfg.zona.nombre, sources: {} };
 
   for (const src of ALL) {
     if (cfg.fuentes[src.name] === false || (only && !only.includes(src.name))) {
@@ -100,18 +123,28 @@ export async function run(only) {
 
   if (cfg.geocodificar !== false && !only) {
     const log = (m) => console.log(`[mapa] ${m}`);
-    try { await geocodeListings(listings, cfg, join(ROOT, 'collector', 'geocache.json'), log); } catch (e) { log(`ERROR: ${e.message}`); }
+    try { await geocodeListings(listings, cfg, geocache, log); } catch (e) { log(`ERROR: ${e.message}`); }
   }
   status.with_location = listings.filter((l) => l.lat != null).length;
 
+  if (!publishOnly) await writeFile(join(STATE, 'listings.json'), JSON.stringify({ updated_at: now, listings }));
+
   await mkdir(DATA, { recursive: true });
-  await writeFile(join(DATA, 'listings.json'), JSON.stringify({ updated_at: now, listings }));
+  const groups = { venta: [], alquiler: [] };
+  for (const l of listings) (l.operation === 'venta' ? groups.venta : groups.alquiler).push(forApp(l));
+  for (const [op, list] of Object.entries(groups)) {
+    await writeFile(join(DATA, `${op}.json`), JSON.stringify({ updated_at: status.updated_at, listings: list }));
+    status[`total_${op}`] = list.length;
+  }
+  await rm(join(DATA, 'listings.json'), { force: true });
   await writeFile(join(DATA, 'status.json'), JSON.stringify(status, null, 2));
+  if (!publishOnly) await writeFile(join(STATE, 'status.json'), JSON.stringify(status, null, 2));
   console.log(`Total guardado: ${listings.length}`);
   return status;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const only = process.argv[2]?.split(',');
+  const arg = process.argv[2];
+  const only = arg === '--solo-publicar' ? [] : arg?.split(',');
   run(only).catch((e) => { console.error(e); process.exit(1); });
 }

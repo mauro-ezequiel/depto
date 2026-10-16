@@ -73,22 +73,28 @@ const isNew = (l) => state.lastVisit && l.first_seen && l.first_seen > state.las
 const pricePerM2 = (l) => (l.price && (l.area_total || l.area_covered) ? l.price / (l.area_total || l.area_covered) : null);
 
 // ---------- datos ----------
+// Los avisos vienen en dos archivos (venta y alquiler); primero el de la pestaña actual.
+const parts = { venta: [], alquiler: [] };
 async function load({ quiet = false } = {}) {
   try {
-    const [d, s] = await Promise.all([
-      fetch('data/listings.json', { cache: 'no-cache' }).then((r) => r.json()),
-      fetch('data/status.json', { cache: 'no-cache' }).then((r) => r.json()).catch(() => null),
-    ]);
+    const s = await fetch('data/status.json', { cache: 'no-cache' }).then((r) => r.json()).catch(() => null);
+    if (quiet && s && s.updated_at === state.updatedAt) return;
     const before = state.updatedAt;
-    const prevIds = new Set(state.all.map((l) => l.id));
-    state.all = d.listings || [];
-    state.updatedAt = d.updated_at || null;
+    const prevIds = quiet ? new Set(state.all.map((l) => l.id)) : null;
     state.status = s;
+    const order = state.f.op === 'alquiler' ? ['alquiler', 'venta'] : ['venta', 'alquiler'];
+    for (const op of order) {
+      const d = await fetch(`data/${op}.json`, { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : { listings: [] }));
+      parts[op] = d.listings || [];
+      state.all = [...parts.venta, ...parts.alquiler];
+      state.updatedAt = s?.updated_at || d.updated_at || null;
+      if (!quiet) { buildFilterChips(); apply(); }
+    }
     if (quiet && before && before !== state.updatedAt) {
       const n = state.all.filter((l) => !prevIds.has(l.id)).length;
-      toast(n ? `${n} aviso${n > 1 ? 's' : ''} nuevo${n > 1 ? 's' : ''}` : 'Avisos actualizados', 'Ver', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+      buildFilterChips(); apply();
+      toast(n ? `${nf.format(n)} aviso${n > 1 ? 's' : ''} nuevo${n > 1 ? 's' : ''}` : 'Avisos actualizados', 'Ver', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     }
-    if (!quiet || before !== state.updatedAt) { buildFilterChips(); apply(); }
   } catch (e) {
     if (!state.all.length) showEmpty('No se pudieron cargar los avisos', 'Revisá tu conexión y volvé a intentar.');
   }

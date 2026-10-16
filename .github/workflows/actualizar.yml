@@ -11,7 +11,7 @@ on:
         default: false
   push:
     branches: [main]
-    paths: ["web/**", "collector/**"]
+    paths: ["web/**", "collector/**", ".github/workflows/actualizar.yml"]
 
 permissions:
   contents: write
@@ -25,7 +25,7 @@ concurrency:
 jobs:
   recolectar:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 330
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,6 +34,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      # La base completa de avisos se guarda en la caché de Actions (no en git: pesa mucho)
+      - name: Recuperar base de avisos
+        uses: actions/cache/restore@v4
+        with:
+          path: state
+          key: depto-state-${{ github.run_id }}
+          restore-keys: depto-state-
       - name: Leer portales
         if: github.event_name != 'push'
         env:
@@ -41,16 +48,25 @@ jobs:
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
           DEBUG_DUMP: ${{ inputs.debug && '1' || '' }}
         run: node collector/collect.mjs
-      - name: Guardar datos en el repo
+      - name: Solo publicar (cambio de código)
+        if: github.event_name == 'push'
+        run: node collector/collect.mjs --solo-publicar
+      - name: Guardar base de avisos
         if: github.event_name != 'push'
+        uses: actions/cache/save@v4
+        with:
+          path: state
+          key: depto-state-${{ github.run_id }}
+      - name: Guardar muestras de debug
+        if: inputs.debug
         run: |
           git config user.name "depto-bot"
           git config user.email "depto-bot@users.noreply.github.com"
-          git add web/data collector/geocache.json
-          if [ -d debug ]; then git add -f debug; fi
-          git diff --cached --quiet || git commit -m "Avisos actualizados $(date -u +%Y-%m-%dT%H:%MZ)"
-          git pull --rebase -X theirs origin main
+          git add -f debug
+          git commit -m "Muestras de debug" || exit 0
+          git pull --rebase origin main
           git push
+      - run: ls -la web/data
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

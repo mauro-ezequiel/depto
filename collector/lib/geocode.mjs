@@ -36,13 +36,14 @@ export async function geocodeListings(listings, cfg, cachePath, log) {
   let asked = 0, found = 0;
 
   for (const l of listings) {
-    if (l.lat != null && l.lng != null) continue;
+    // los que ya tienen ubicación exacta no se tocan; los aproximados se intentan mejorar
+    if (l.lat != null && l.lng != null && !l.approx) continue;
     const street = clean(l.address);
     const hood = clean(l.neighborhood);
     // primero la dirección exacta; si no, el centro del barrio (aproximado)
     const tries = [];
     if (street && /\d/.test(street)) tries.push([`${street}, ${hood ? hood + ', ' : ''}${city}`, false]);
-    if (hood) tries.push([`${hood}, ${city}`, true]);
+    if (hood && !l.approx) tries.push([`${hood}, ${city}`, true]);
     for (const [q, approx] of tries) {
       const key = q.toLowerCase();
       if (!(key in cache)) {

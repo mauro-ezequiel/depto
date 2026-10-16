@@ -14,7 +14,57 @@
       "este": -58.334
     },
     "mercadolibre": "capital-federal",
-    "nuroa": "capital-federal"
+    "nuroa": "capital-federal",
+    "barrios": [
+      "agronomia",
+      "almagro",
+      "balvanera",
+      "barracas",
+      "belgrano",
+      "boedo",
+      "caballito",
+      "chacarita",
+      "coghlan",
+      "colegiales",
+      "constitucion",
+      "flores",
+      "floresta",
+      "la-boca",
+      "la-paternal",
+      "liniers",
+      "mataderos",
+      "monte-castro",
+      "monserrat",
+      "nueva-pompeya",
+      "nunez",
+      "palermo",
+      "parque-avellaneda",
+      "parque-chacabuco",
+      "parque-chas",
+      "parque-patricios",
+      "puerto-madero",
+      "recoleta",
+      "retiro",
+      "saavedra",
+      "san-cristobal",
+      "san-nicolas",
+      "san-telmo",
+      "velez-sarsfield",
+      "versalles",
+      "villa-crespo",
+      "villa-del-parque",
+      "villa-devoto",
+      "villa-general-mitre",
+      "villa-lugano",
+      "villa-luro",
+      "villa-ortuzar",
+      "villa-pueyrredon",
+      "villa-real",
+      "villa-riachuelo",
+      "villa-santa-rita",
+      "villa-soldati",
+      "villa-urquiza"
+    ]
   },
   "operaciones": [
     "venta",
@@ -31,7 +81,7 @@
   "paginas_por_busqueda": 3,
   "pausa_entre_pedidos_ms": 2500,
   "dias_para_borrar_no_vistos": 10,
-  "maximo_avisos": 6000,
+  "maximo_avisos": 120000,
   "fuentes": {
     "mercadolibre": true,
     "remax": true,
@@ -57,5 +107,8 @@
       "paginas": 8
     }
   ],
-  "detalles_max": 400
+  "detalles_max": 1500,
+  "mercadolibre_paginas": 40,
+  "pausa_mercadolibre_ms": 800,
+  "pausa_detalles_ms": 900
 }

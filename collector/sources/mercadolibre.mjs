@@ -151,21 +151,48 @@ export default {
       return out.filter((l) => !l.operation || cfg.operaciones.includes(l.operation));
     }
 
-    log('  sin token de API: intento con la página pública');
+    log('  sin token de API: leo la página pública');
     const zona = cfg.zona.mercadolibre || cfg.zona.argenprop;
+    const maxPages = cfg.mercadolibre_paginas ?? 40; // ML muestra hasta 2000 resultados por búsqueda
+    const pause = cfg.pausa_mercadolibre_ms ?? 800;
+    const seen = new Set();
+
+    // Lee una búsqueda completa (hasta maxPages). Devuelve el total que informa ML.
+    const crawlSearch = async (base, op, type, label) => {
+      let total = null, n = 0;
+      for (let p = 0; p < maxPages; p++) {
+        const url = p ? `${base}_Desde_${p * 50 + 1}_NoIndex_True` : base;
+        let html;
+        try { html = await fetchText(url); } catch (e) {
+          log(`  ${label} p${p + 1}: ${e.message}`);
+          if (e.status === 403 || e.status === 429) throw e;
+          break;
+        }
+        if (!p) {
+          total = toNumber(html.match(/<title>\s*([\d.]+)/)?.[1]);
+          if (type === cfg.tipos[0] && op === cfg.operaciones[0] && !label.includes('/')) dumpRaw('mercadolibre.html', html);
+        }
+        const items = parsePolycards(html, { operation: op, type }).filter((l) => !seen.has(l.id));
+        items.forEach((l) => seen.add(l.id));
+        out.push(...items);
+        n += items.length;
+        if (!items.length || (total != null && (p + 1) * 50 >= total)) break;
+        await sleep(pause);
+      }
+      log(`  ${label}: ${n} (ML informa ${total ?? '?'})`);
+      return total;
+    };
+
     for (const op of cfg.operaciones) {
       for (const type of cfg.tipos) {
         if (!TYPE_SLUG[type]) continue;
-        for (let p = 0; p < cfg.paginas_por_busqueda; p++) {
-          const desde = p ? `_Desde_${p * 50 + 1}_NoIndex_True` : '';
-          const url = `https://inmuebles.mercadolibre.com.ar/${TYPE_SLUG[type]}/${OP_SLUG[op]}/${zona}/${desde}`.replace(/\/$/, p ? '' : '/');
-          const html = await fetchText(url);
-          if (!p && type === cfg.tipos[0] && op === cfg.operaciones[0]) dumpRaw('mercadolibre.html', html);
-          const items = parsePolycards(html, { operation: op, type });
-          out.push(...items);
-          log(`  ${type}/${op} p${p + 1}: ${items.length}`);
-          if (!items.length) break;
-          await sleep(cfg.pausa_entre_pedidos_ms);
+        const base = `https://inmuebles.mercadolibre.com.ar/${TYPE_SLUG[type]}/${OP_SLUG[op]}/${zona}/`;
+        const total = await crawlSearch(base, op, type, `${type}/${op}`);
+        // Si hay más de lo que ML deja ver en una búsqueda, la partimos por barrio
+        if (total > maxPages * 50 && cfg.zona.barrios?.length) {
+          for (const barrio of cfg.zona.barrios) {
+            await crawlSearch(`${base}${barrio}/`, op, type, `${type}/${op}/${barrio}`);
+          }
         }
       }
     }
