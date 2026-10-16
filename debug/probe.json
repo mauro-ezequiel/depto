@@ -1,0 +1,148 @@
+{
+  "trovit": {
+    "url": "https://casas.trovit.com.ar/index.php/cod.search_homes/type.1/what_d.capital%20federal/origin.2/rooms_min.0/bathrooms_min.0/order_by.source_date/",
+    "error": "fetch failed"
+  },
+  "mitula": {
+    "url": "https://casas.mitula.com.ar/casas/departamentos-capital-federal",
+    "final": "https://casas.mitula.com.ar/casas/departamentos-capital-federal",
+    "status": 401,
+    "len": 13,
+    "challenge": true,
+    "jsonld": 0,
+    "nextdata": false,
+    "prices": 0
+  },
+  "nuroa": {
+    "url": "https://www.nuroa.com.ar/venta/departamentos-capital-federal",
+    "final": "https://www.nuroa.com.ar/venta/departamentos-capital-federal",
+    "status": 200,
+    "len": 884463,
+    "title": "Departamentos Capital Federal - 13.281 departamentos en venta en Capital Federal de Nuroa.com.ar",
+    "challenge": false,
+    "jsonld": 2,
+    "nextdata": false,
+    "prices": 0
+  },
+  "clarin": {
+    "url": "https://inmuebles.clarin.com/departamentos-venta-capital-federal",
+    "final": "https://inmuebles.clarin.com/departamentos-venta-capital-federal",
+    "status": 405,
+    "len": 2626,
+    "title": "Human Verification",
+    "challenge": true,
+    "jsonld": 0,
+    "nextdata": false,
+    "prices": 0
+  },
+  "buscainmueble": {
+    "url": "https://www.buscainmueble.com/departamentos/venta/capital-federal",
+    "final": "https://www.buscainmueble.com/departamentos/venta/capital-federal",
+    "status": 405,
+    "len": 2626,
+    "title": "Human Verification",
+    "challenge": true,
+    "jsonld": 0,
+    "nextdata": false,
+    "prices": 0
+  },
+  "century21": {
+    "url": "https://century21.com.ar/propiedades/departamento/venta/capital-federal",
+    "final": "https://century21.com.ar/propiedades/departamento/venta/capital-federal",
+    "status": 200,
+    "len": 26466,
+    "title": "Propiedad en Urbanube",
+    "challenge": false,
+    "jsonld": 0,
+    "nextdata": false,
+    "prices": 0
+  },
+  "coldwell": {
+    "url": "https://www.coldwellbanker.com.ar/propiedades",
+    "final": "https://coldwellbanker.com.ar/propiedades",
+    "status": 200,
+    "len": 165297,
+    "title": "Propiedades",
+    "challenge": false,
+    "jsonld": 13,
+    "nextdata": false,
+    "prices": 20
+  },
+  "kw": {
+    "url": "https://www.kw.com.ar/propiedades",
+    "error": "fetch failed"
+  },
+  "toribio": {
+    "url": "https://www.toribioachaval.com/propiedades",
+    "final": "https://www.toribioachaval.com/propiedades",
+    "status": 404,
+    "len": 23284,
+    "title": "Toribio Achával Propiedades",
+    "challenge": false,
+    "jsonld": 0,
+    "nextdata": false,
+    "prices": 0
+  },
+  "ljramos": {
+    "url": "https://www.ljramos.com.ar/propiedades",
+    "final": "https://ljramos.com/propiedades",
+    "status": 200,
+    "len": 225882,
+    "title": "Propiedades",
+    "challenge": false,
+    "jsonld": 18,
+    "nextdata": false,
+    "prices": 26
+  },
+  "soldati": {
+    "url": "https://www.soldatipropiedades.com.ar/propiedades",
+    "error": "fetch failed"
+  },
+  "properstar": {
+    "url": "https://www.properstar.com.ar/argentina/buenos-aires/venta/departamento",
+    "final": "https://www.properstar.com.ar/argentina/buenos-aires/venta/departamento",
+    "status": 403,
+    "len": 7907,
+    "title": "Azure WAF",
+    "challenge": false,
+    "jsonld": 0,
+    "nextdata": false,
+    "prices": 0
+  },
+  "doomos": {
+    "url": "https://www.doomos.com.ar/de/venta-departamentos-capital-federal.html",
+    "error": "fetch failed"
+  },
+  "icasas": {
+    "url": "https://www.icasas.com.ar/venta/departamentos-capital-federal",
+    "final": "https://www.icasas.com.ar/venta/departamentos-capital-federal",
+    "status": 404,
+    "len": 94400,
+    "title": "icasas.com.ar - La p&aacute;gina que ha solicitado no existe.",
+    "challenge": false,
+    "jsonld": 0,
+    "nextdata": false,
+    "prices": 0
+  },
+  "tokko_demo": {
+    "url": "https://www.tokkobroker.com/api/v1/property/?format=json&limit=1",
+    "final": "https://www.tokkobroker.com/api/v1/property/?format=json&limit=1",
+    "status": 401,
+    "len": 0,
+    "challenge": false,
+    "jsonld": 0,
+    "nextdata": false,
+    "prices": 0
+  },
+  "inmuebles24": {
+    "url": "https://www.argenprop.com/",
+    "final": "https://www.argenprop.com/",
+    "status": 405,
+    "len": 2626,
+    "title": "Human Verification",
+    "challenge": true,
+    "jsonld": 0,
+    "nextdata": false,
+    "prices": 0
+  }
+}
