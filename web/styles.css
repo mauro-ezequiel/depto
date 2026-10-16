@@ -161,3 +161,31 @@ a.primary { display: grid; place-items: center; text-decoration: none; }
   font-size: 14px; max-width: calc(100% - 32px); box-shadow: 0 6px 24px rgba(0,0,0,.25);
 }
 .toast button { margin-left: 10px; background: none; border: 0; color: var(--accent); font-weight: 700; cursor: pointer; }
+
+/* Barra de precio */
+.tabs .view { margin-left: auto; }
+.pricebar { display: flex; gap: 6px; margin-top: 8px; }
+.pricebar select, .pricebar input {
+  height: 38px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); padding: 0 10px; min-width: 0;
+}
+.pricebar select { flex: 0 0 74px; }
+.pricebar input { flex: 1; }
+
+/* Mapa */
+.mapview { position: fixed; left: 0; right: 0; bottom: 0; top: var(--top-h, 190px); z-index: 4; }
+#map { position: absolute; inset: 0; background: var(--line); }
+body.mapmode main { display: none; }
+.mapnote {
+  position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 500;
+  background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 6px 12px;
+  font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,.15); white-space: nowrap;
+}
+.pin { background: none; border: 0; }
+.pin span {
+  display: inline-block; transform: translate(-50%, -100%); padding: 3px 7px; border-radius: 9px;
+  background: var(--c); color: #111; font: 700 12px/1.2 system-ui, sans-serif; white-space: nowrap;
+  border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35);
+}
+.pin span[style*="#d6262b"], .pin span[style*="#7b3fe4"], .pin span[style*="#1f6feb"] { color: #fff; }
+.pin.approx span { opacity: .75; border-style: dashed; }
+.leaflet-container { font: inherit; }

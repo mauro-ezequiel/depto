@@ -38,5 +38,7 @@
     "properati": true,
     "remax": true
   },
-  "remax_paginas": 10
+  "remax_paginas": 10,
+  "geocodificar": true,
+  "geocodificar_max": 900
 }

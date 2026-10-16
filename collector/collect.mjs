@@ -11,6 +11,7 @@ import argenprop from './sources/argenprop.mjs';
 import zonaprop from './sources/zonaprop.mjs';
 import properati from './sources/properati.mjs';
 import remax from './sources/remax.mjs';
+import { geocodeListings } from './lib/geocode.mjs';
 
 const ALL = [mercadolibre, argenprop, zonaprop, properati, remax];
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -76,6 +77,12 @@ export async function run(only) {
   listings.sort((a, b) => (b.first_seen || '').localeCompare(a.first_seen || ''));
   listings = listings.slice(0, cfg.maximo_avisos);
   status.total = listings.length;
+
+  if (cfg.geocodificar !== false && !only) {
+    const log = (m) => console.log(`[mapa] ${m}`);
+    try { await geocodeListings(listings, cfg, join(ROOT, 'collector', 'geocache.json'), log); } catch (e) { log(`ERROR: ${e.message}`); }
+  }
+  status.with_location = listings.filter((l) => l.lat != null).length;
 
   await mkdir(DATA, { recursive: true });
   await writeFile(join(DATA, 'listings.json'), JSON.stringify({ updated_at: now, listings }));

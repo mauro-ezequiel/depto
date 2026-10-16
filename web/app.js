@@ -24,10 +24,19 @@ const state = {
   hidden: new Set(store.get('hidden', [])),
   lastVisit: store.get('lastVisit', null),
   f: Object.assign(
-    { q: '', op: '', types: [], sources: [], currency: '', pmin: '', pmax: '', rooms: '', amin: '', sort: 'new', photos: false, showHidden: false },
+    {
+      q: '', op: 'venta', types: [], sources: [], rooms: '', amin: '', sort: 'new', photos: false, showHidden: false,
+      // precio aparte para comprar y para alquilar
+      price: { venta: { cur: 'USD', min: '', max: '' }, alquiler: { cur: 'ARS', min: '', max: '' } },
+    },
     store.get('filters', {}),
   ),
+  mode: store.get('mode', 'list'),
 };
+if (!['venta', 'alquiler', 'fav'].includes(state.f.op)) state.f.op = 'venta';
+state.f.price = Object.assign(
+  { venta: { cur: 'USD', min: '', max: '' }, alquiler: { cur: 'ARS', min: '', max: '' } }, state.f.price || {},
+);
 
 // ---------- formato ----------
 const nf = new Intl.NumberFormat('es-AR');
@@ -86,13 +95,18 @@ function apply() {
   const q = f.q.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
   let v = state.all.filter((l) => {
     if (f.op === 'fav') { if (!state.favs.has(l.id)) return false; }
-    else if (f.op && l.operation !== f.op) return false;
+    else {
+      if (l.operation !== f.op) return false;
+      const pr = f.price[f.op];
+      if (pr) {
+        if ((pr.min || pr.max) && l.currency !== pr.cur) return false;
+        if (pr.min && !(l.price >= +pr.min)) return false;
+        if (pr.max && !(l.price && l.price <= +pr.max)) return false;
+      }
+    }
     if (!f.showHidden && f.op !== 'fav' && state.hidden.has(l.id)) return false;
     if (f.types.length && !f.types.includes(l.type)) return false;
     if (f.sources.length && !f.sources.includes(l.source)) return false;
-    if (f.currency && l.currency !== f.currency) return false;
-    if (f.pmin && !(l.price >= +f.pmin)) return false;
-    if (f.pmax && !(l.price && l.price <= +f.pmax)) return false;
     if (f.rooms && !(l.rooms >= +f.rooms)) return false;
     if (f.amin && !((l.area_total || l.area_covered) >= +f.amin)) return false;
     if (f.photos && !l.images?.length) return false;
@@ -116,13 +130,14 @@ function apply() {
   state.shown = 0;
   $('#grid').innerHTML = '';
   renderMeta();
-  renderMore();
+  syncPriceBar();
+  if (state.mode === 'map') renderMap(); else renderMore();
   store.set('filters', { ...f, q: f.q });
   const active = ['types', 'sources'].reduce((n, k) => n + (f[k].length ? 1 : 0), 0)
-    + ['currency', 'pmin', 'pmax', 'rooms', 'amin'].filter((k) => f[k]).length + (f.photos ? 1 : 0) + (f.sort !== 'new' ? 1 : 0);
+    + ['rooms', 'amin'].filter((k) => f[k]).length + (f.photos ? 1 : 0) + (f.sort !== 'new' ? 1 : 0);
   $('#filterCount').textContent = active;
   $('#filterCount').classList.toggle('hidden', !active);
-  document.querySelectorAll('#opChips .chip').forEach((b) => b.classList.toggle('on', b.dataset.op === f.op));
+  document.querySelectorAll('#opChips .chip[data-op]').forEach((b) => b.classList.toggle('on', b.dataset.op === f.op));
 
   if (!v.length) {
     if (!state.all.length) {
@@ -215,6 +230,7 @@ function openDetail(l) {
     ['Dirección', l.address],
     ['Barrio', l.neighborhood],
     ['Localidad', l.city],
+    ['Ubicación en el mapa', l.lat != null ? (l.approx ? 'Aproximada (centro del barrio)' : 'Por dirección') : null],
     ['Portal', srcLabel(l.source)],
     ['Visto por primera vez', l.first_seen ? new Date(l.first_seen).toLocaleDateString('es-AR') : null],
   ].filter(([, v]) => v != null && v !== '');
@@ -286,7 +302,7 @@ function buildFilterChips() {
 
 function syncForm() {
   const fm = $('#filterForm');
-  for (const k of ['currency', 'pmin', 'pmax', 'amin', 'sort']) fm.elements[k].value = state.f[k];
+  for (const k of ['amin', 'sort']) fm.elements[k].value = state.f[k];
   fm.elements.photos.checked = state.f.photos;
   fm.elements.showHidden.checked = state.f.showHidden;
   document.querySelectorAll('#roomChips .chip').forEach((b) => b.classList.toggle('on', b.dataset.v === String(state.f.rooms)));
@@ -294,12 +310,80 @@ function syncForm() {
 
 function readForm() {
   const fm = $('#filterForm');
-  for (const k of ['currency', 'pmin', 'pmax', 'amin', 'sort']) state.f[k] = fm.elements[k].value;
+  for (const k of ['amin', 'sort']) state.f[k] = fm.elements[k].value;
   state.f.photos = fm.elements.photos.checked;
   state.f.showHidden = fm.elements.showHidden.checked;
   state.f.types = [...document.querySelectorAll('#typeChips .chip.on')].map((b) => b.dataset.v);
   state.f.sources = [...document.querySelectorAll('#sourceChips .chip.on')].map((b) => b.dataset.v);
   state.f.rooms = document.querySelector('#roomChips .chip.on')?.dataset.v || '';
+}
+
+// ---------- precio (barra rápida) ----------
+function syncPriceBar() {
+  const pr = state.f.price[state.f.op];
+  $('#pricebar').classList.toggle('hidden', !pr);
+  if (!pr) return;
+  if (document.activeElement?.closest?.('#pricebar')) return;
+  $('#pcur').value = pr.cur;
+  $('#pmin').value = pr.min;
+  $('#pmax').value = pr.max;
+  const word = state.f.op === 'venta' ? 'Precio' : 'Alquiler';
+  $('#pmin').placeholder = `${word} mín.`;
+  $('#pmax').placeholder = `${word} máx.`;
+}
+
+// ---------- mapa ----------
+const SRC_COLORS = { mercadolibre: '#e5b800', remax: '#d6262b', argenprop: '#1f6feb', zonaprop: '#f26b1d', properati: '#7b3fe4' };
+let map, cluster;
+
+function setMode(mode, initial) {
+  state.mode = mode;
+  store.set('mode', mode);
+  const isMap = mode === 'map';
+  document.body.classList.toggle('mapmode', isMap);
+  $('#mapView').classList.toggle('hidden', !isMap);
+  $('#viewBtn').textContent = isMap ? '☰ Lista' : '🗺 Mapa';
+  $('#viewBtn').setAttribute('aria-pressed', String(isMap));
+  if (!initial) apply();
+}
+
+function priceShort(l) {
+  if (!l.price) return '?';
+  const p = l.price;
+  const n = p >= 1e6 ? `${+(p / 1e6).toFixed(p >= 1e7 ? 0 : 1)}M` : p >= 1e3 ? `${Math.round(p / 1e3)}k` : String(p);
+  return (l.currency === 'USD' ? 'US$' : '$') + n;
+}
+
+function renderMap() {
+  if (!window.L) { $('#mapNote').textContent = 'No se pudo cargar el mapa.'; return; }
+  if (!map) {
+    map = L.map('map', { zoomControl: true, attributionControl: true }).setView([-34.61, -58.44], 12);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; OpenStreetMap',
+    }).addTo(map);
+    cluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 45, chunkedLoading: true });
+    map.addLayer(cluster);
+  }
+  setTimeout(() => map.invalidateSize(), 0);
+  cluster.clearLayers();
+  const pts = state.view.filter((l) => l.lat != null && l.lng != null);
+  const markers = pts.map((l) => {
+    const icon = L.divIcon({
+      className: 'pin' + (l.approx ? ' approx' : ''),
+      html: `<span style="--c:${SRC_COLORS[l.source] || '#0f766e'}">${esc(priceShort(l))}</span>`,
+      iconSize: null,
+    });
+    const m = L.marker([l.lat, l.lng], { icon, title: l.title || '' });
+    m.on('click', () => openDetail(l));
+    return m;
+  });
+  cluster.addLayers(markers);
+  const missing = state.view.length - pts.length;
+  $('#mapNote').textContent = `${nf.format(pts.length)} en el mapa` + (missing ? ` · ${nf.format(missing)} sin ubicación todavía` : '');
+  if (pts.length && !renderMap.fitted) {
+    map.fitBounds(L.latLngBounds(pts.map((l) => [l.lat, l.lng])), { padding: [30, 30], maxZoom: 14 });
+    renderMap.fitted = true;
+  }
 }
 
 // ---------- avisos emergentes ----------
@@ -319,9 +403,21 @@ function init() {
   let qt;
   $('#q').addEventListener('input', (e) => { clearTimeout(qt); qt = setTimeout(() => { state.f.q = e.target.value; apply(); }, 200); });
   $('#opChips').addEventListener('click', (e) => {
-    const b = e.target.closest('.chip'); if (!b) return;
+    const b = e.target.closest('.chip[data-op]'); if (!b) return;
     state.f.op = b.dataset.op; apply();
   });
+  let pt;
+  const onPrice = () => {
+    const pr = state.f.price[state.f.op]; if (!pr) return;
+    pr.cur = $('#pcur').value; pr.min = $('#pmin').value; pr.max = $('#pmax').value;
+    clearTimeout(pt); pt = setTimeout(apply, 300);
+  };
+  ['#pcur', '#pmin', '#pmax'].forEach((s) => $(s).addEventListener('input', onPrice));
+  $('#viewBtn').onclick = () => setMode(state.mode === 'map' ? 'list' : 'map');
+  setMode(state.mode, true);
+  const topH = () => document.documentElement.style.setProperty('--top-h', `${$('.top').offsetHeight}px`);
+  new ResizeObserver(topH).observe($('.top'));
+  topH();
   $('#filtersBtn').onclick = () => { syncForm(); $('#filters').showModal(); };
   $('#filters').addEventListener('click', (e) => {
     const chip = e.target.closest('.chip');
@@ -333,7 +429,7 @@ function init() {
   });
   $('#filterForm').addEventListener('submit', () => { readForm(); apply(); window.scrollTo({ top: 0 }); });
   $('#resetFilters').onclick = () => {
-    Object.assign(state.f, { types: [], sources: [], currency: '', pmin: '', pmax: '', rooms: '', amin: '', sort: 'new', photos: false, showHidden: false });
+    Object.assign(state.f, { types: [], sources: [], rooms: '', amin: '', sort: 'new', photos: false, showHidden: false });
     buildFilterChips(); syncForm();
   };
 

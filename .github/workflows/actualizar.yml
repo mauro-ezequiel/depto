@@ -25,7 +25,7 @@ concurrency:
 jobs:
   recolectar:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,7 +46,7 @@ jobs:
         run: |
           git config user.name "depto-bot"
           git config user.email "depto-bot@users.noreply.github.com"
-          git add web/data
+          git add web/data collector/geocache.json
           if [ -d debug ]; then git add -f debug; fi
           git diff --cached --quiet || git commit -m "Avisos actualizados $(date -u +%Y-%m-%dT%H:%MZ)"
           git push
