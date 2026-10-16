@@ -1,0 +1,23 @@
+{
+  "url": "https://www.argenprop.com/casas/venta/capital-federal",
+  "headers": {
+    "access-control-allow-methods": "OPTIONS,GET,POST",
+    "access-control-allow-origin": "*",
+    "access-control-expose-headers": "x-amzn-waf-action",
+    "access-control-max-age": "86400",
+    "alt-svc": "h3=\":443\"; ma=86400",
+    "cache-control": "no-store, max-age=0",
+    "connection": "keep-alive",
+    "content-length": "2626",
+    "content-security-policy": "frame-ancestors   'self'",
+    "content-type": "text/html; charset=UTF-8",
+    "date": "Fri, 16 Oct 2026 19:37:41 GMT",
+    "server": "CloudFront",
+    "via": "1.1 2df1276dc9658ab02783b6d628c27154.cloudfront.net (CloudFront)",
+    "x-amz-cf-id": "HnQ7se3optXdaPkF-TVehRkojQEEVPVRYPpnA88UZyewH75g8-CPmA==",
+    "x-amz-cf-pop": "DFW59-P3",
+    "x-amzn-waf-action": "captcha",
+    "x-cache": "Error from cloudfront"
+  },
+  "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"utf-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n    <title>Human Verification</title>\n    <style>\n        body {\n            font-family: \"Arial\";\n        }\n    </style>\n    <script type=\"text/javascript\">\n    window.awsWafCookieDomainList = ['sosiva451.com','argenprop.com','buscainmueble.com','inmuebles.clarin.com','creditos451.com','garantias451.com'];\n    window.gokuProps = {\n\"key\":\"AQIDAHjcYu/GjX+QlghicBgQ/7bFaQZ+m5FKCMDnO+vTbNg96AEqJCoBJChp05ZWS0ajf7OiAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMzrY8kizQGdBOU/WGAgEQgDtiPXsggTC8niJ3sE6AMcK3ZIgoXZeP7fOEcvLXptcHIFDdD5OkS/+7uEBL28zGBNuQH6VzNZXuW8rfyA==\",\n          \"iv\":\"A6wmiwFOuAAAA7dI\",\n          \"context\":\"s3iakhC5ZhHxxt3xylWKX2VuRWWlGSErL4LOxCyW1b0D8ahSk8m1ldJtHCD6scaDcD1TCH626YSWWRNEJ6ICetaQ/hFAR7W4BVYAJUi7BYTtA2FbCKrO3zGpsYe8h0pKTqa5iX2M6cTwvWO8Mdl7DFp+olOMI9l7JhGADSu5C8yPHyVpxh+HajqI6xOdX2E+/+DJ6YDUGj6s/ErDJ2POGo4md11zpuX7LRoNzA9qfYgLHA2nE7hT40fX88EkcneH/U68eMPNcocdKV5jegZuls5XJ+rnuwWnFliwc7D32cSt8oCay/EPLgNGC7nJS2n26faSuon8ACjUdHqKs0pDFa5neE1vmI/+2CHNAs01zOkvbFOSvt59xCLPMyArcmdjNwwdfastRuOQE45f1n+EpDBc/vdSR4eOjQJ0J8DJUJ1DaEo+n8P1zN7+/RA4f27nYtMZ1v9yJnt2B82ELn/Ki//tE/D4LlK6LZwvePiwZeGz6deVuffv1BK3tKeHZgnf93Rt/LCsomQkNY1D3cA+bMzVGCvogeePJOttGtB4YsR374Z6OJhhUChXcIiGJe+0RVb8dUvv8hbexkaWJnDDppuq6pzj2TywRdh9DQZLZJntOI/kIsU5sdEP7ZoHXRGoW3mz8I+67iSLmOn5Lz+/yzgYYKPEf5ttAExHlXf8jQ/K7Vo5DcFOjxvs0o5OcBfkO1A6aXozXUFH516k1A5wU57SnJPN5//zSXyktPp+1D3hCvZd1SxzKWBkS38GQ4gHiabi5WLPHKN20Ulu33XJ\"\n};\n    </script>\n    <script src=\"https://ed6ad91cf943.b3b755ac.us-east-2.token.awswaf.com/ed6ad91cf943/81509c010a6e/8e4dc2449e41/challenge.js\"></script>\n    <script src=\"https://ed6ad91cf943.b3b755ac.us-east-2.captcha.awswaf.com/ed6ad91cf943/81509c010a6e/8e4dc2449e41/captcha.js\"></script>\n</head>\n<body>\n    <div id=\"captcha-container\"></div>\n    <script type=\"text/javascript\">\n        AwsWafIntegration.saveReferrer();\n        window.addEventListener(\"load\", function() {\n          const container = document.querySelector(\"#captcha-container\");\n          CaptchaScript.renderCaptcha(container, async (voucher) => {\n              await ChallengeScript.submitCaptcha(voucher);\n              window.location.reload(true);\n          }\n      );\n    });\n    </script>\n    <noscript>\n        <h1>JavaScript is disabled</h1>\n        In order to continue, you need to verify that you're not a robot by solving a CAPTCHA puzzle.\n         The CAPTCHA puzzle requires JavaScript. Enable JavaScript and then reload the page.\n    </noscript>\n</body>\n</html>"
+}

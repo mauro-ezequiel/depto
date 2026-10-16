@@ -1,0 +1,10 @@
+{
+  "api": "https://api-ar.redremax.com/remaxweb-ar/api/listings/findAll?page=0&pageSize=48&sort=-createdAt&in:operationId=1&locations=in::::Capital%20Federal@",
+  "keys": [
+    "data",
+    "code",
+    "message",
+    "errors"
+  ],
+  "data": "{\"data\":null,\"code\":500,\"message\":\"For input string: \\\"Capital Federal\\\"; nested exception is java.lang.NumberFormatException: For input string: \\\"Capital Federal\\\"\",\"errors\":[\"org.springframework.dao.InvalidDataAccessApiUsageException: For input string: \\\"Capital Federal\\\"; nested exception is java.lang.NumberFormatException: For input string: \\\"Capital Federal\\\"\"]}"
+}
