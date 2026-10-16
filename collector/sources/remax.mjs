@@ -30,7 +30,7 @@ export default {
         try {
           const api = `https://api-ar.redremax.com/remaxweb-ar/api/listings/findAll?page=${page}&pageSize=48&sort=-createdAt&in:operationId=${OP_ID[op]}&locations=in::::${encodeURIComponent(cfg.zona.nombre)}@`;
           const data = await fetchJson(api, { headers: { accept: 'application/json', origin: 'https://www.remax.com.ar' } });
-          if (page === 0) dump(`remax-${op}`, { api, keys: Object.keys(data || {}), sample: findListingObjects(data).slice(0, 2) });
+          if (page === 0) dump(`remax-${op}`, { api, keys: Object.keys(data || {}), data: JSON.stringify(data).slice(0, 8000) });
           items = fromRemaxJson(data, ctx);
         } catch (e) {
           log(`  API: ${e.message}`);

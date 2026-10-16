@@ -115,7 +115,8 @@ export default {
           const html = await fetchText(url);
           if (!p && type === cfg.tipos[0] && op === cfg.operaciones[0]) {
             const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)].map((m) => ({ attrs: m[1], len: m[2].length, head: m[2].slice(0, 300) }));
-            dump('mercadolibre-html', { url, len: html.length, title: html.match(/<title>([^<]*)/)?.[1], scripts, start: html.slice(0, 3000) });
+            const i = html.indexOf('polycard');
+            dump('mercadolibre-html', { url, len: html.length, scripts: scripts.length, polycard: i >= 0 ? html.slice(i - 200, i + 6000) : null });
           }
           const items = listingsFromHtml(html, { source: 'mercadolibre', base: url, operation: op, type });
           out.push(...items);
