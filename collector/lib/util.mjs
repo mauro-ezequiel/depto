@@ -3,6 +3,17 @@
 const UA =
   'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36';
 
+import { mkdirSync, writeFileSync } from 'node:fs';
+
+// Con DEBUG_DUMP=1 guarda muestras crudas en debug/ para ajustar los lectores.
+export function dump(name, data) {
+  if (!process.env.DEBUG_DUMP) return;
+  try {
+    mkdirSync('debug', { recursive: true });
+    writeFileSync(`debug/${name}.json`, JSON.stringify(data, null, 2).slice(0, 200000));
+  } catch { /* no es crítico */ }
+}
+
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export async function fetchText(url, { headers = {}, timeoutMs = 30000 } = {}) {
@@ -23,6 +34,7 @@ export async function fetchText(url, { headers = {}, timeoutMs = 30000 } = {}) {
     if (!res.ok) {
       const err = new Error(`HTTP ${res.status} en ${url}`);
       err.status = res.status;
+      dump(`http-${res.status}-${new URL(url).hostname}`, { url, headers: Object.fromEntries(res.headers), body: body.slice(0, 3000) });
       throw err;
     }
     return body;

@@ -4,7 +4,7 @@
 // ML_CLIENT_SECRET como secrets del repositorio. Si no hay token, se intenta
 // leer la página pública de resultados.
 
-import { fetchJson, fetchText, guessOperation, guessType, sleep, toNumber, uniq } from '../lib/util.mjs';
+import { dump, fetchJson, fetchText, guessOperation, guessType, sleep, toNumber, uniq } from '../lib/util.mjs';
 import { listingsFromHtml } from '../lib/embedded.mjs';
 
 const CATEGORY = 'MLA1459'; // Inmuebles
@@ -113,6 +113,10 @@ export default {
           const desde = p ? `_Desde_${p * 48 + 1}` : '';
           const url = `https://inmuebles.mercadolibre.com.ar/${TYPE_SLUG[type]}/${OP_SLUG[op]}/${zona}/${desde}`;
           const html = await fetchText(url);
+          if (!p && type === cfg.tipos[0] && op === cfg.operaciones[0]) {
+            const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)].map((m) => ({ attrs: m[1], len: m[2].length, head: m[2].slice(0, 300) }));
+            dump('mercadolibre-html', { url, len: html.length, title: html.match(/<title>([^<]*)/)?.[1], scripts, start: html.slice(0, 3000) });
+          }
           const items = listingsFromHtml(html, { source: 'mercadolibre', base: url, operation: op, type });
           out.push(...items);
           log(`  ${type}/${op} p${p + 1}: ${items.length}`);

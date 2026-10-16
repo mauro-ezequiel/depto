@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "17 */3 * * *"   # cada 3 horas
   workflow_dispatch:          # botón "Run workflow" para correrlo a mano
+    inputs:
+      debug:
+        description: "Guardar muestras crudas en debug/ para ajustar los lectores"
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths: ["web/**", "collector/**"]
@@ -34,6 +39,7 @@ jobs:
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          DEBUG_DUMP: ${{ inputs.debug && '1' || '' }}
         run: node collector/collect.mjs
       - name: Guardar datos en el repo
         if: github.event_name != 'push'
@@ -41,6 +47,7 @@ jobs:
           git config user.name "depto-bot"
           git config user.email "depto-bot@users.noreply.github.com"
           git add web/data
+          if [ -d debug ]; then git add -f debug; fi
           git diff --cached --quiet || git commit -m "Avisos actualizados $(date -u +%Y-%m-%dT%H:%MZ)"
           git push
       - uses: actions/configure-pages@v5
