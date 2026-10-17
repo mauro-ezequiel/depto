@@ -59,7 +59,8 @@ export async function enrichMercadoLibre(listings, cfg, log, checkpoint) {
     .sort((a, b) => priority(a) - priority(b) || (b.first_seen || '').localeCompare(a.first_seen || ''))
     .slice(0, max);
   const pending = queue.length;
-  let done = 0, ok = 0, stop = false;
+  let done = 0, ok = 0, stop = false, blocks = 0;
+  let pause = cfg.pausa_detalles_ms ?? 1200;
   const box = cfg.zona.bbox;
   const one = async (l) => {
     try {
@@ -79,10 +80,18 @@ export async function enrichMercadoLibre(listings, cfg, log, checkpoint) {
       l.detail_at = new Date().toISOString();
       l.detail_v = DETAIL_V;
       ok++;
+      blocks = 0;
     } catch (e) {
       if (e.status === 404 || e.status === 410) { l.detail_v = DETAIL_V; return; } // aviso dado de baja
       log(`  ${l.url}: ${e.message}`);
-      if (e.status === 403 || e.status === 429) stop = true;
+      if (e.status === 403 || e.status === 429) {
+        // ML frena si vamos rápido: esperamos y seguimos más despacio; si insiste, cortamos
+        blocks++;
+        if (blocks >= 4) stop = true;
+        else { pause *= 2; await sleep(120000); }
+        queue.unshift(l);
+        return;
+      }
     }
   };
   await Promise.all(Array.from({ length: workers }, async () => {
@@ -92,10 +101,10 @@ export async function enrichMercadoLibre(listings, cfg, log, checkpoint) {
       await one(l);
       // se guarda cada tanto: si el proceso se corta, lo hecho no se pierde
       if (checkpoint && done % 1000 === 0) await checkpoint();
-      await sleep(cfg.pausa_detalles_ms ?? 1200);
+      await sleep(pause);
     }
   }));
   const left = listings.filter((l) => l.source === 'mercadolibre' && l.detail_v !== DETAIL_V).length;
   log(`  completados ${ok} de ${done} (quedaban ${pending}; faltan ${left} para la próxima corrida)`);
-  if (process.env.GITHUB_ACTIONS) console.log(`::notice title=Fichas Mercado Libre::completadas ${ok} de ${done}, faltan ${left}`);
+  if (process.env.GITHUB_ACTIONS) console.log(`::notice title=Fichas Mercado Libre::completadas ${ok} de ${done}, faltan ${left}, bloqueos ${blocks}, pausa final ${pause} ms${stop ? ', cortado por bloqueo' : ''}`);
 }

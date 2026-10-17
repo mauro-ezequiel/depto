@@ -278,7 +278,7 @@ function toggleFav(l, btn, short) {
 
 // Botón "Mapa" de cada aviso: lo muestra en nuestro mapa; si no tiene coordenadas, en Google Maps.
 function showOnMap(l) {
-  if (l.lat == null) {
+  if (!hasPoint(l)) {
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place(l))}`, '_blank', 'noopener');
     return;
   }
@@ -313,7 +313,7 @@ function openDetail(l) {
     ['Dirección', l.address],
     ['Barrio', l.neighborhood],
     ['Localidad', l.city],
-    ['Ubicación en el mapa', l.lat != null ? (l.approx ? 'Aproximada (centro del barrio)' : 'Por dirección') : null],
+    ['Ubicación en el mapa', hasPoint(l) ? 'Exacta' : 'Sin ubicación exacta (se busca por dirección en Google Maps)'],
     ['Portal', srcLabel(l.source)],
     ['Publica', l.publisher],
     ['Visto por primera vez', l.first_seen ? new Date(l.first_seen).toLocaleDateString('es-AR') : null],
@@ -439,6 +439,9 @@ function priceShort(l) {
   return (l.currency === 'USD' ? 'US$' : '$') + n;
 }
 
+// solo ubicaciones exactas: el centro del barrio apilaba avisos distintos en un mismo punto
+const hasPoint = (l) => l.lat != null && l.lng != null && !l.approx;
+
 function renderMap() {
   if (!window.L) { $('#mapNote').textContent = 'No se pudo cargar el mapa.'; return; }
   if (!map) {
@@ -451,7 +454,7 @@ function renderMap() {
   }
   setTimeout(() => map.invalidateSize(), 0);
   cluster.clearLayers();
-  const pts = state.view.filter((l) => l.lat != null && l.lng != null);
+  const pts = state.view.filter(hasPoint);
   const markers = pts.map((l) => {
     const icon = L.divIcon({
       className: 'pin' + (l.approx ? ' approx' : ''),
@@ -464,7 +467,7 @@ function renderMap() {
   });
   cluster.addLayers(markers);
   const missing = state.view.length - pts.length;
-  $('#mapNote').textContent = `${nf.format(pts.length)} en el mapa` + (missing ? ` · ${nf.format(missing)} sin ubicación todavía` : '');
+  $('#mapNote').textContent = `${nf.format(pts.length)} en el mapa` + (missing ? ` · ${nf.format(missing)} sin ubicación exacta todavía` : '');
   if (pts.length && !renderMap.fitted) {
     map.fitBounds(L.latLngBounds(pts.map((l) => [l.lat, l.lng])), { padding: [30, 30], maxZoom: 14 });
     renderMap.fitted = true;

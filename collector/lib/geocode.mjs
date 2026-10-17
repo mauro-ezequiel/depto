@@ -37,13 +37,15 @@ export async function geocodeListings(listings, cfg, cachePath, log) {
 
   for (const l of listings) {
     // los que ya tienen ubicación exacta no se tocan; los aproximados se intentan mejorar
-    if (l.lat != null && l.lng != null && !l.approx) continue;
+    // los que solo tenían el centro del barrio pierden ese punto falso
+    if (l.approx) { delete l.lat; delete l.lng; delete l.approx; }
+    if (l.lat != null && l.lng != null) continue;
     const street = clean(l.address);
     const hood = clean(l.neighborhood);
     // primero la dirección exacta; si no, el centro del barrio (aproximado)
     const tries = [];
     if (street && /\d/.test(street)) tries.push([`${street}, ${hood ? hood + ', ' : ''}${city}`, false]);
-    if (hood && !l.approx) tries.push([`${hood}, ${city}`, true]);
+    // el centro del barrio ya no se usa: apilaba muchos avisos en un mismo punto
     for (const [q, approx] of tries) {
       const key = q.toLowerCase();
       if (!(key in cache)) {

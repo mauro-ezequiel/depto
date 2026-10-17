@@ -1,5 +1,5 @@
 // Service worker: la app abre sin conexión y siempre busca avisos frescos.
-const VERSION = 'depto-v8';
+const VERSION = 'depto-v9';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
   'vendor/leaflet.js', 'vendor/leaflet.css', 'vendor/leaflet.markercluster.js', 'vendor/MarkerCluster.css', 'vendor/MarkerCluster.Default.css'];
 

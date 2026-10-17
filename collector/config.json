@@ -111,7 +111,7 @@
   "mercadolibre_paginas": 40,
   "mercadolibre_minutos": 150,
   "pausa_mercadolibre_ms": 800,
-  "pausa_detalles_ms": 700,
+  "pausa_detalles_ms": 1500,
   "detalles_minutos": 75,
-  "detalles_paralelo": 2
+  "detalles_paralelo": 1
 }
