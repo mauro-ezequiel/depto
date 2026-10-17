@@ -81,7 +81,7 @@
   "paginas_por_busqueda": 3,
   "pausa_entre_pedidos_ms": 2500,
   "dias_para_borrar_no_vistos": 10,
-  "maximo_avisos": 120000,
+  "maximo_avisos": 300000,
   "fuentes": {
     "mercadolibre": true,
     "remax": true,
@@ -113,5 +113,5 @@
   "pausa_mercadolibre_ms": 800,
   "pausa_detalles_ms": 700,
   "detalles_minutos": 75,
-  "detalles_paralelo": 3
+  "detalles_paralelo": 2
 }

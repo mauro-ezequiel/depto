@@ -51,7 +51,7 @@ function priority(l) {
 // Abre la ficha de cada aviso de Mercado Libre (trae todas las fotos, la ubicación exacta,
 // dormitorios, baños, etc.). Son muchísimos: cada corrida hace los que entran en el tiempo
 // máximo y la siguiente sigue con los que faltan.
-export async function enrichMercadoLibre(listings, cfg, log) {
+export async function enrichMercadoLibre(listings, cfg, log, checkpoint) {
   const max = cfg.detalles_max ?? 250;
   const deadline = Date.now() + (cfg.detalles_minutos ?? 60) * 60000;
   const workers = cfg.detalles_paralelo ?? 1;
@@ -90,6 +90,8 @@ export async function enrichMercadoLibre(listings, cfg, log) {
       const l = queue.shift();
       done++;
       await one(l);
+      // se guarda cada tanto: si el proceso se corta, lo hecho no se pierde
+      if (checkpoint && done % 1000 === 0) await checkpoint();
       await sleep(cfg.pausa_detalles_ms ?? 1200);
     }
   }));

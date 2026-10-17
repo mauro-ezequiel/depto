@@ -48,7 +48,19 @@ jobs:
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
           DEBUG_DUMP: ${{ inputs.debug && '1' || '' }}
           NODE_OPTIONS: --max-old-space-size=8192
-        run: node collector/collect.mjs
+        run: node collector/collect.mjs --sin-fichas
+      - name: Abrir fichas de Mercado Libre (fotos y datos)
+        if: github.event_name != 'push'
+        # si este paso se corta, se publica igual lo que haya; lo avanzado queda guardado
+        continue-on-error: true
+        timeout-minutes: 90
+        env:
+          DEBUG_DUMP: ${{ inputs.debug && '1' || '' }}
+          NODE_OPTIONS: --max-old-space-size=8192
+        run: node collector/collect.mjs --solo-fichas
+      - name: Publicar después de las fichas
+        if: always() && github.event_name != 'push' && hashFiles('state/listings.json') != ''
+        run: node collector/collect.mjs --solo-publicar
       - name: Solo publicar (cambio de código)
         if: github.event_name == 'push'
         run: node collector/collect.mjs --solo-publicar

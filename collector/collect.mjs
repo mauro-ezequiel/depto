@@ -53,7 +53,7 @@ function compact(l) {
   return o;
 }
 
-export async function run(only) {
+export async function run(only, mode = {}) {
   const cfg = await readJson(join(ROOT, 'collector', 'config.json'), null);
   if (!cfg) throw new Error('Falta collector/config.json');
   cfg._state = STATE;
@@ -68,7 +68,8 @@ export async function run(only) {
   const prevStatus = await readJson(join(STATE, 'status.json'), null)
     || await readJson(join(DATA, 'status.json'), { sources: {} });
   // "solo publicar": no lee portales, solo arma los archivos de la app desde la base guardada
-  const publishOnly = Array.isArray(only) && !only.length;
+  const publishOnly = Array.isArray(only) && !only.length && !mode.soloFichas;
+  const saveState = !publishOnly;
   const now = new Date().toISOString();
 
   const byId = new Map(prev.listings.map((l) => [l.id, l]));
@@ -131,12 +132,14 @@ export async function run(only) {
     console.log(process.env.GITHUB_ACTIONS ? `::notice title=Avance::${m}` : m);
   };
   // punto de guardado: si algo falla más adelante, lo leído de los portales no se pierde
-  if (!publishOnly) await writeFile(join(STATE, 'listings.json'), JSON.stringify({ updated_at: now, listings }));
+  const checkpoint = () => writeFile(join(STATE, 'listings.json'), JSON.stringify({ updated_at: now, listings }));
+  if (saveState && !mode.soloFichas) await checkpoint();
   mem('portales leídos');
 
-  if (cfg.detalles !== false && (!only || only.includes('mercadolibre'))) {
+  // Las fichas corren en un paso aparte (--solo-fichas) para que un corte no frene lo demás
+  if (cfg.detalles !== false && !mode.sinFichas && (mode.soloFichas || !only || only.includes('mercadolibre'))) {
     const log = (m) => console.log(`[detalles] ${m}`);
-    try { await enrichMercadoLibre(listings, cfg, log); } catch (e) { log(`ERROR: ${e.message}`); }
+    try { await enrichMercadoLibre(listings, cfg, log, checkpoint); } catch (e) { log(`ERROR: ${e.message}`); }
   }
 
   if (cfg.geocodificar !== false && !only) {
@@ -146,7 +149,7 @@ export async function run(only) {
   status.with_location = listings.filter((l) => l.lat != null).length;
   mem('fichas y mapa listos');
 
-  if (!publishOnly) await writeFile(join(STATE, 'listings.json'), JSON.stringify({ updated_at: now, listings }));
+  if (saveState) await checkpoint();
 
   // La app baja solo los tramos de precio que necesita (ej. hasta USD 100.000), así carga rápido
   await mkdir(DATA, { recursive: true });
@@ -171,13 +174,14 @@ export async function run(only) {
   }
   await rm(join(DATA, 'listings.json'), { force: true });
   await writeFile(join(DATA, 'status.json'), JSON.stringify(status, null, 2));
-  if (!publishOnly) await writeFile(join(STATE, 'status.json'), JSON.stringify(status, null, 2));
+  if (saveState) await writeFile(join(STATE, 'status.json'), JSON.stringify(status, null, 2));
   console.log(`Total guardado: ${listings.length}`);
   return status;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const arg = process.argv[2];
-  const only = arg === '--solo-publicar' ? [] : arg?.split(',');
-  run(only).catch((e) => { console.error(e); process.exit(1); });
+  const mode = { sinFichas: arg === '--sin-fichas', soloFichas: arg === '--solo-fichas' };
+  const only = arg === '--solo-publicar' || mode.soloFichas ? [] : arg?.startsWith('--') ? undefined : arg?.split(',');
+  run(only, mode).catch((e) => { console.error(e); process.exit(1); });
 }
