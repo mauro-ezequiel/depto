@@ -164,10 +164,10 @@ export default {
       venta: [[0, 60000], [60000, 90000], [90000, 120000], [120000, 160000], [160000, 220000], [220000, 320000], [320000, 500000], [500000, 1000000], [1000000, 100000000]].map(([a, b]) => `_PriceRange_${a}USD-${b}USD`),
       alquiler: [[0, 400000], [400000, 550000], [550000, 700000], [700000, 900000], [900000, 1200000], [1200000, 1800000], [1800000, 100000000000]].map(([a, b]) => `_PriceRange_${a}ARS-${b}ARS`),
     };
-    const crawlSearch = async (base, op, type, label) => {
-      let total = null, n = 0;
+    const crawlSearch = async (base, op, type, label, filter = '') => {
+      let total = null, n = 0, raw = 0;
       for (let p = 0; p < maxPages; p++) {
-        const url = p ? `${base}_Desde_${p * 50 + 1}_NoIndex_True` : base;
+        const url = p ? `${base}_Desde_${p * 50 + 1}${filter}_NoIndex_True` : `${base}${filter}`;
         let html;
         try { html = await fetchText(url); } catch (e) {
           log(`  ${label} p${p + 1}: ${e.message}`);
@@ -178,16 +178,19 @@ export default {
           total = toNumber(html.match(/<title>\s*([\d.]+)/)?.[1]);
           if (type === cfg.tipos[0] && op === cfg.operaciones[0] && !label.includes('/')) dumpRaw('mercadolibre.html', html);
         }
-        const items = parsePolycards(html, { operation: op, type }).filter((l) => !seen.has(l.id));
+        const page = parsePolycards(html, { operation: op, type });
+        const items = page.filter((l) => !seen.has(l.id));
         items.forEach((l) => seen.add(l.id));
         out.push(...items);
         n += items.length;
-        if (!items.length || (total != null && (p + 1) * 50 >= total)) break;
+        raw += page.length;
+        if (!page.length || (total != null && (p + 1) * 50 >= total)) break;
         await sleep(pause);
       }
       log(`  ${label}: ${n} (ML informa ${total ?? '?'})`);
-      stats.push(`${label}:${n}/${total ?? '?'}`);
-      return total;
+      stats.push(`${label}:${n}/${raw}`);
+      // si ML no dice el total, llegar al tope de páginas indica que hay más
+      return total ?? (raw >= maxPages * 50 * 0.95 ? Infinity : raw);
     };
 
     for (const op of cfg.operaciones) {
@@ -200,7 +203,7 @@ export default {
           for (const barrio of cfg.zona.barrios) {
             const t = await crawlSearch(`${base}${barrio}/`, op, type, `${type}/${op}/${barrio}`);
             if (t > maxPages * 50) {
-              for (const r of RANGES[op] || []) await crawlSearch(`${base}${barrio}/${r}`, op, type, `${type}/${op}/${barrio}${r.replace('_PriceRange', '')}`);
+              for (const r of RANGES[op] || []) await crawlSearch(`${base}${barrio}/`, op, type, `${type}/${op}/${barrio}${r.replace('_PriceRange', '')}`, r);
             }
           }
         }

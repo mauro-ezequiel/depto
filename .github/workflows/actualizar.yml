@@ -72,8 +72,8 @@ jobs:
           node -e '
             const s = require("./web/data/status.json");
             const src = Object.entries(s.sources).map(([k, v]) => `${k}=${v.ok ? v.count : "x"}`).join(" ");
-            const kb = (f) => Math.round(require("fs").statSync("web/data/" + f).size / 1024);
-            console.log(`::notice title=Resumen::total=${s.total} venta=${s.total_venta} alquiler=${s.total_alquiler} ubicados=${s.with_location} ${src} kb_venta=${kb("venta.json")} kb_alquiler=${kb("alquiler.json")}`);
+            const kb = (op) => Math.round(s.files[op].reduce((t, x) => t + require("fs").statSync("web/data/" + x.f).size, 0) / 1024);
+            console.log(`::notice title=Resumen::total=${s.total} venta=${s.total_venta} alquiler=${s.total_alquiler} ubicados=${s.with_location} ${src} kb_venta=${kb("venta")} kb_alquiler=${kb("alquiler")}`);
           '
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
