@@ -41,17 +41,31 @@ export function parseMlDetail(html) {
   return out;
 }
 
+// Prioridad: lo más buscado primero (venta hasta USD 150.000, alquileres comunes), y lo más nuevo.
+function priority(l) {
+  if (l.operation === 'venta' && l.currency === 'USD' && l.price && l.price <= 150000) return 0;
+  if (l.operation !== 'venta' && l.currency === 'ARS' && l.price && l.price <= 1500000) return 1;
+  return 2;
+}
+
+// Abre la ficha de cada aviso de Mercado Libre (trae todas las fotos, la ubicación exacta,
+// dormitorios, baños, etc.). Son muchísimos: cada corrida hace los que entran en el tiempo
+// máximo y la siguiente sigue con los que faltan.
 export async function enrichMercadoLibre(listings, cfg, log) {
   const max = cfg.detalles_max ?? 250;
-  let done = 0, ok = 0;
-  for (const l of listings) {
-    if (l.source !== 'mercadolibre' || l.detail_v === DETAIL_V || done >= max) continue;
-    done++;
+  const deadline = Date.now() + (cfg.detalles_minutos ?? 60) * 60000;
+  const workers = cfg.detalles_paralelo ?? 1;
+  const queue = listings.filter((l) => l.source === 'mercadolibre' && l.detail_v !== DETAIL_V)
+    .sort((a, b) => priority(a) - priority(b) || (b.first_seen || '').localeCompare(a.first_seen || ''))
+    .slice(0, max);
+  const pending = queue.length;
+  let done = 0, ok = 0, stop = false;
+  const box = cfg.zona.bbox;
+  const one = async (l) => {
     try {
       const html = await fetchText(l.url);
       if (done === 1) dumpRaw('ml-item.html', html);
       const d = parseMlDetail(html);
-      const box = cfg.zona.bbox;
       if (d.lat != null && (!box || (d.lat >= box.sur && d.lat <= box.norte && d.lng >= box.oeste && d.lng <= box.este))) {
         l.lat = d.lat; l.lng = d.lng; delete l.approx;
       }
@@ -66,10 +80,20 @@ export async function enrichMercadoLibre(listings, cfg, log) {
       l.detail_v = DETAIL_V;
       ok++;
     } catch (e) {
+      if (e.status === 404 || e.status === 410) { l.detail_v = DETAIL_V; return; } // aviso dado de baja
       log(`  ${l.url}: ${e.message}`);
-      if (e.status === 403 || e.status === 429) break;
+      if (e.status === 403 || e.status === 429) stop = true;
     }
-    await sleep(cfg.pausa_detalles_ms ?? 1200);
-  }
-  log(`  completados ${ok} de ${done} avisos`);
+  };
+  await Promise.all(Array.from({ length: workers }, async () => {
+    while (!stop && queue.length && Date.now() < deadline) {
+      const l = queue.shift();
+      done++;
+      await one(l);
+      await sleep(cfg.pausa_detalles_ms ?? 1200);
+    }
+  }));
+  const left = listings.filter((l) => l.source === 'mercadolibre' && l.detail_v !== DETAIL_V).length;
+  log(`  completados ${ok} de ${done} (quedaban ${pending}; faltan ${left} para la próxima corrida)`);
+  if (process.env.GITHUB_ACTIONS) console.log(`::notice title=Fichas Mercado Libre::completadas ${ok} de ${done}, faltan ${left}`);
 }

@@ -107,9 +107,11 @@
       "paginas": 8
     }
   ],
-  "detalles_max": 1500,
+  "detalles_max": 50000,
   "mercadolibre_paginas": 40,
   "mercadolibre_minutos": 150,
   "pausa_mercadolibre_ms": 800,
-  "pausa_detalles_ms": 900
+  "pausa_detalles_ms": 700,
+  "detalles_minutos": 75,
+  "detalles_paralelo": 3
 }

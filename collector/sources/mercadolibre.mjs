@@ -11,6 +11,9 @@ import { extractJsonBlobs } from '../lib/embedded.mjs';
 
 const CATEGORY = 'MLA1459'; // Inmuebles
 const OP_SLUG = { venta: 'venta', alquiler: 'alquiler', temporal: 'alquiler-temporal' };
+const ACCENTS = { agronomia: 'Agronomía', constitucion: 'Constitución', nunez: 'Núñez', 'parque-chacabuco': 'Parque Chacabuco', 'villa-gral-mitre': 'Villa General Mitre', 'san-nicolas': 'San Nicolás', 'villa-pueyrredon': 'Villa Pueyrredón' };
+const barrioName = (slug) => ACCENTS[slug] || slug.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
+const PER = 100; // avisos por página en la vista de mapa
 const TYPE_SLUG = { departamento: 'departamentos', ph: 'ph', casa: 'casas', local: 'locales', oficina: 'oficinas', terreno: 'terrenos-lotes' };
 
 async function getToken() {
@@ -94,6 +97,9 @@ export function parsePolycards(html, { operation, type } = {}) {
         address: parts.length > 2 ? parts.slice(0, -2).join(', ') : null,
         neighborhood: parts.length > 1 ? parts[parts.length - 2] : null,
         city: parts[parts.length - 1] || null,
+        // la vista de mapa trae las coordenadas de cada aviso
+        lat: Number(md.latitude) || null,
+        lng: Number(md.longitude) || null,
         area_total: num(/m².*tot/i),
         area_covered: num(/m².*cub/i) ?? num(/m²/),
         rooms: num(/amb/i),
@@ -157,7 +163,7 @@ export default {
     const zona = cfg.zona.mercadolibre || cfg.zona.argenprop;
     const maxPages = cfg.mercadolibre_paginas ?? 40; // ML muestra hasta 2000 resultados por búsqueda
     const pause = cfg.pausa_mercadolibre_ms ?? 800;
-    const seen = new Set();
+    const seen = new Map();
 
     // Lee una búsqueda completa (hasta maxPages). Devuelve el total que informa ML.
     const stats = [];
@@ -166,10 +172,11 @@ export default {
       venta: [[0, 60000], [60000, 90000], [90000, 120000], [120000, 160000], [160000, 220000], [220000, 320000], [320000, 500000], [500000, 1000000], [1000000, 100000000]].map(([a, b]) => `_PriceRange_${a}USD-${b}USD`),
       alquiler: [[0, 400000], [400000, 550000], [550000, 700000], [700000, 900000], [900000, 1200000], [1200000, 1800000], [1800000, 100000000000]].map(([a, b]) => `_PriceRange_${a}ARS-${b}ARS`),
     };
-    const crawlSearch = async (base, op, type, label, filter = '') => {
+    const crawlSearch = async (base, op, type, label, filter = '', barrio = null) => {
       let total = null, n = 0, raw = 0;
-      for (let p = 0; p < maxPages; p++) {
-        const url = p ? `${base}_Desde_${p * 50 + 1}${filter}_NoIndex_True` : `${base}${filter}`;
+      // Vista de mapa: 100 avisos por página y con las coordenadas de cada uno
+      for (let p = 0; p < maxPages * 50 / PER; p++) {
+        const url = p ? `${base}_Desde_${p * PER + 1}${filter}_DisplayType_M_NoIndex_True` : `${base}${filter}_DisplayType_M`;
         let html;
         try { html = await fetchText(url); } catch (e) {
           log(`  ${label} p${p + 1}: ${e.message}`);
@@ -182,12 +189,15 @@ export default {
           if (type === cfg.tipos[0] && op === cfg.operaciones[0] && !label.includes('/')) dumpRaw('mercadolibre.html', html);
         }
         const page = parsePolycards(html, { operation: op, type });
+        if (barrio) for (const l of page) l.neighborhood ||= barrioName(barrio);
         const items = page.filter((l) => !seen.has(l.id));
-        items.forEach((l) => seen.add(l.id));
+        // los que ya vinieron en la búsqueda general se enteran acá de su barrio
+        if (barrio) for (const l of page) { const o = seen.get(l.id); if (o && !o.neighborhood) o.neighborhood = l.neighborhood; }
+        items.forEach((l) => seen.set(l.id, l));
         out.push(...items);
         n += items.length;
         raw += page.length;
-        if (!page.length || (total != null && (p + 1) * 50 >= total)) break;
+        if (!page.length || (total != null && (p + 1) * PER >= total)) break;
         await sleep(pause);
       }
       log(`  ${label}: ${n} (ML informa ${total ?? '?'})`);
@@ -215,9 +225,9 @@ export default {
           if (!capped.has(main)) continue;
           for (const barrio of cfg.zona.barrios || []) {
             const lb = `${main}/${barrio}`;
-            t.push({ label: lb, base: `${base}${barrio}/`, op, type });
+            t.push({ label: lb, base: `${base}${barrio}/`, op, type, barrio });
             if (!capped.has(lb)) continue;
-            for (const r of RANGES[op] || []) t.push({ label: `${lb}${r.replace('_PriceRange', '')}`, base: `${base}${barrio}/`, filter: r, op, type });
+            for (const r of RANGES[op] || []) t.push({ label: `${lb}${r.replace('_PriceRange', '')}`, base: `${base}${barrio}/`, filter: r, op, type, barrio });
           }
         }
       }
@@ -229,7 +239,7 @@ export default {
     let done = 0;
     while (done < list.length && Date.now() < deadline) {
       const t = list[i % list.length];
-      const total = await crawlSearch(t.base, t.op, t.type, t.label, t.filter);
+      const total = await crawlSearch(t.base, t.op, t.type, t.label, t.filter, t.barrio);
       const was = capped.has(t.label);
       if (total == null) { /* error suelto: se deja como estaba */ } else if (total > cap) capped.add(t.label); else capped.delete(t.label);
       done++;

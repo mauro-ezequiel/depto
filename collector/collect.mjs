@@ -89,8 +89,10 @@ export async function run(only) {
       for (const it of items) {
         const old = byId.get(it.id);
         if (!old) nuevos++;
+        // si ahora vino con ubicación exacta, deja de ser aproximada
+        if (old && it.lat != null && !it.approx) delete old.approx;
         byId.set(it.id, compact({
-          ...old, ...it,
+          ...old, ...compact(it), // lo que no vino esta vez (ej. la dirección) se conserva
           // la página del aviso trae más fotos que el listado: no las pisamos
           images: (old?.images?.length || 0) > (it.images?.length || 0) ? old.images : it.images,
           first_seen: old?.first_seen || now,
