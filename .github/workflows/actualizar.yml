@@ -47,12 +47,14 @@ jobs:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
           DEBUG_DUMP: ${{ inputs.debug && '1' || '' }}
+          NODE_OPTIONS: --max-old-space-size=8192
         run: node collector/collect.mjs
       - name: Solo publicar (cambio de código)
         if: github.event_name == 'push'
         run: node collector/collect.mjs --solo-publicar
       - name: Guardar base de avisos
-        if: github.event_name != 'push'
+        # aunque algo falle después de leer los portales, lo ya leído se guarda
+        if: always() && github.event_name != 'push' && hashFiles('state/listings.json') != ''
         uses: actions/cache/save@v4
         with:
           path: state
@@ -67,6 +69,7 @@ jobs:
           git pull --rebase origin main
           git push
       - name: Resumen
+        if: always() && hashFiles('web/data/status.json') != ''
         run: |
           ls -la web/data
           node -e '

@@ -126,6 +126,14 @@ export async function run(only) {
     }
   }
 
+  const mem = (where) => {
+    const m = `${where}: ${listings.length} avisos, memoria ${Math.round(process.memoryUsage().rss / 1e6)} MB`;
+    console.log(process.env.GITHUB_ACTIONS ? `::notice title=Avance::${m}` : m);
+  };
+  // punto de guardado: si algo falla más adelante, lo leído de los portales no se pierde
+  if (!publishOnly) await writeFile(join(STATE, 'listings.json'), JSON.stringify({ updated_at: now, listings }));
+  mem('portales leídos');
+
   if (cfg.detalles !== false && (!only || only.includes('mercadolibre'))) {
     const log = (m) => console.log(`[detalles] ${m}`);
     try { await enrichMercadoLibre(listings, cfg, log); } catch (e) { log(`ERROR: ${e.message}`); }
@@ -136,6 +144,7 @@ export async function run(only) {
     try { await geocodeListings(listings, cfg, geocache, log); } catch (e) { log(`ERROR: ${e.message}`); }
   }
   status.with_location = listings.filter((l) => l.lat != null).length;
+  mem('fichas y mapa listos');
 
   if (!publishOnly) await writeFile(join(STATE, 'listings.json'), JSON.stringify({ updated_at: now, listings }));
 
