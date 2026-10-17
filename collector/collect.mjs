@@ -56,6 +56,7 @@ function compact(l) {
 export async function run(only) {
   const cfg = await readJson(join(ROOT, 'collector', 'config.json'), null);
   if (!cfg) throw new Error('Falta collector/config.json');
+  cfg._state = STATE;
   await mkdir(STATE, { recursive: true });
   // Primera vez: arrancamos desde lo que había publicado antes
   const prev = await readJson(join(STATE, 'listings.json'), null)

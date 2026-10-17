@@ -4,6 +4,8 @@
 // ML_CLIENT_SECRET como secrets del repositorio. Si no hay token, se intenta
 // leer la página pública de resultados.
 
+import { readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { dumpRaw, fetchJson, fetchText, guessOperation, guessType, sleep, toNumber, uniq } from '../lib/util.mjs';
 import { extractJsonBlobs } from '../lib/embedded.mjs';
 
@@ -172,6 +174,7 @@ export default {
         try { html = await fetchText(url); } catch (e) {
           log(`  ${label} p${p + 1}: ${e.message}`);
           if (e.status === 403 || e.status === 429) throw e;
+          if (!p) return null; // no se pudo leer: no sabemos si hay más
           break;
         }
         if (!p) {
@@ -193,22 +196,53 @@ export default {
       return total ?? (raw >= maxPages * 50 * 0.95 ? Infinity : raw);
     };
 
-    for (const op of cfg.operaciones) {
-      for (const type of cfg.tipos) {
-        if (!TYPE_SLUG[type]) continue;
-        const base = `https://inmuebles.mercadolibre.com.ar/${TYPE_SLUG[type]}/${OP_SLUG[op]}/${zona}/`;
-        const total = await crawlSearch(base, op, type, `${type}/${op}`);
-        // Si hay más de lo que ML deja ver en una búsqueda, la partimos por barrio
-        if (total > maxPages * 50 && cfg.zona.barrios?.length) {
-          for (const barrio of cfg.zona.barrios) {
-            const t = await crawlSearch(`${base}${barrio}/`, op, type, `${type}/${op}/${barrio}`);
-            if (t > maxPages * 50) {
-              for (const r of RANGES[op] || []) await crawlSearch(`${base}${barrio}/`, op, type, `${type}/${op}/${barrio}${r.replace('_PriceRange', '')}`, r);
-            }
+    // Todas las búsquedas no entran en una sola corrida: hay un tiempo máximo y la próxima
+    // sigue donde quedó (progreso guardado en state/mercadolibre.json).
+    const progPath = cfg._state ? join(cfg._state, 'mercadolibre.json') : null;
+    let prog = { capped: [], next: null };
+    try { if (progPath) prog = { ...prog, ...JSON.parse(await readFile(progPath, 'utf8')) }; } catch { /* primera vez */ }
+    const capped = new Set(prog.capped);
+    const cap = maxPages * 50;
+    const tasks = () => {
+      const t = [];
+      for (const op of cfg.operaciones) {
+        for (const type of cfg.tipos) {
+          if (!TYPE_SLUG[type]) continue;
+          const base = `https://inmuebles.mercadolibre.com.ar/${TYPE_SLUG[type]}/${OP_SLUG[op]}/${zona}/`;
+          const main = `${type}/${op}`;
+          t.push({ label: main, base, op, type });
+          // Si hay más de lo que ML deja ver en una búsqueda, se parte por barrio y después por precio
+          if (!capped.has(main)) continue;
+          for (const barrio of cfg.zona.barrios || []) {
+            const lb = `${main}/${barrio}`;
+            t.push({ label: lb, base: `${base}${barrio}/`, op, type });
+            if (!capped.has(lb)) continue;
+            for (const r of RANGES[op] || []) t.push({ label: `${lb}${r.replace('_PriceRange', '')}`, base: `${base}${barrio}/`, filter: r, op, type });
           }
         }
       }
+      return t;
+    };
+    const deadline = Date.now() + (cfg.mercadolibre_minutos ?? 150) * 60000;
+    let list = tasks();
+    let i = Math.max(0, list.findIndex((x) => x.label === prog.next));
+    let done = 0;
+    while (done < list.length && Date.now() < deadline) {
+      const t = list[i % list.length];
+      const total = await crawlSearch(t.base, t.op, t.type, t.label, t.filter);
+      const was = capped.has(t.label);
+      if (total == null) { /* error suelto: se deja como estaba */ } else if (total > cap) capped.add(t.label); else capped.delete(t.label);
+      done++;
+      if (was !== capped.has(t.label)) {
+        // cambió la lista de búsquedas: seguimos justo después de la actual
+        list = tasks();
+        i = list.findIndex((x) => x.label === t.label);
+      }
+      i = (i + 1) % list.length;
     }
+    const next = done < list.length ? list[i % list.length].label : null;
+    log(`  ${done} búsquedas de ${list.length}${next ? `, la próxima corrida sigue en ${next}` : ', vuelta completa'}`);
+    if (progPath) await writeFile(progPath, JSON.stringify({ capped: [...capped], next }));
     if (process.env.GITHUB_ACTIONS) console.log(`::notice title=Mercado Libre::${stats.join(' ')}`);
     return out;
   },
