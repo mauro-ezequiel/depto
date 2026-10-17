@@ -5,10 +5,12 @@ import { gzipSync } from 'node:zlib';
 const UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36';
 const B = 'https://inmuebles.mercadolibre.com.ar/departamentos/venta/capital-federal/flores/';
 const URLS = {
-  lista: B,
-  mapa: `${B}_DisplayType_M`,
-  mapa2: `${B}_DisplayType_M_NoIndex_True`,
-  desktop: B,
+  mapa_p2a: `${B}_Desde_101_DisplayType_M_NoIndex_True`,
+  mapa_p2b: `${B}_Desde_51_DisplayType_M_NoIndex_True`,
+  mapa_p30: `${B}_Desde_2901_DisplayType_M_NoIndex_True`,
+  mapa_precio: `${B}_PriceRange_60000USD-90000USD_DisplayType_M`,
+  mapa_precio_p2: `${B}_Desde_101_PriceRange_60000USD-90000USD_DisplayType_M_NoIndex_True`,
+  item: 'https://departamento.mercadolibre.com.ar/MLA-3558709502-_JM',
 };
 mkdirSync('debug', { recursive: true });
 for (const [name, url] of Object.entries(URLS)) {
