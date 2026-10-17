@@ -2,6 +2,10 @@ name: Probar portales
 
 on:
   workflow_dispatch:
+    inputs:
+      script:
+        description: Script de prueba
+        default: tools/probe.mjs
 
 permissions:
   contents: write
@@ -15,7 +19,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node tools/probe.mjs
+      - run: node ${{ inputs.script || 'tools/probe.mjs' }}
       - name: Guardar resultado
         run: |
           git config user.name "depto-bot"
