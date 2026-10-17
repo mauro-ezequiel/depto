@@ -148,6 +148,16 @@ export async function run(only, mode = {}) {
   }
   status.with_location = listings.filter((l) => l.lat != null).length;
   mem('fichas y mapa listos');
+  // detalle por portal: cuántos tienen ubicación exacta, aproximada y más de una foto
+  const per = {};
+  for (const l of listings) {
+    const p = (per[`${l.source}/${l.operation}`] ||= { n: 0, exacta: 0, aprox: 0, fotos: 0 });
+    p.n++;
+    if (l.lat != null) l.approx ? p.aprox++ : p.exacta++;
+    if (l.images?.length > 1) p.fotos++;
+  }
+  const line = Object.entries(per).map(([k, v]) => `${k} n=${v.n} exacta=${v.exacta} aprox=${v.aprox} fotos>1=${v.fotos}`).join(' | ');
+  console.log(process.env.GITHUB_ACTIONS ? `::notice title=Calidad::${line}` : line);
 
   if (saveState) await checkpoint();
 
