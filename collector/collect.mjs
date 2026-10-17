@@ -3,7 +3,7 @@
 // la app recibe web/data/venta.json, web/data/alquiler.json y web/data/status.json.
 // Uso: node collector/collect.mjs [fuente1,fuente2]
 
-import { readFile, writeFile, mkdir, copyFile, access, rm } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, copyFile, access, rm, readdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -22,13 +22,20 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = join(ROOT, 'web', 'data');
 const STATE = process.env.DEPTO_STATE || join(ROOT, 'state');
 
+// Tramos de precio de los archivos publicados
+const BUCKETS = {
+  venta: { cur: 'USD', cuts: [60000, 80000, 100000, 130000, 180000, 250000, 400000] },
+  alquiler: { cur: 'ARS', cuts: [400000, 600000, 800000, 1100000, 1600000] },
+};
+
 const exists = (p) => access(p).then(() => true, () => false);
 
 // Lo que se publica para la app: sin campos internos y con menos decimales.
 function forApp(l) {
   const { last_seen, detail_at, detail_v, ...o } = l;
+  if (o.city === 'Capital Federal') delete o.city;
   if (o.lat != null) { o.lat = +o.lat.toFixed(5); o.lng = +o.lng.toFixed(5); }
-  if (o.images?.length > 10) o.images = o.images.slice(0, 10);
+  if (o.images?.length > 8) o.images = o.images.slice(0, 8);
   return o;
 }
 
@@ -129,11 +136,25 @@ export async function run(only) {
 
   if (!publishOnly) await writeFile(join(STATE, 'listings.json'), JSON.stringify({ updated_at: now, listings }));
 
+  // La app baja solo los tramos de precio que necesita (ej. hasta USD 100.000), así carga rápido
   await mkdir(DATA, { recursive: true });
-  const groups = { venta: [], alquiler: [] };
-  for (const l of listings) (l.operation === 'venta' ? groups.venta : groups.alquiler).push(forApp(l));
-  for (const [op, list] of Object.entries(groups)) {
-    await writeFile(join(DATA, `${op}.json`), JSON.stringify({ updated_at: status.updated_at, listings: list }));
+  for (const f of await readdir(DATA)) if (/^(venta|alquiler)(-\d+)?\.json$/.test(f)) await rm(join(DATA, f));
+  status.files = {};
+  for (const [op, { cur, cuts }] of Object.entries(BUCKETS)) {
+    const list = listings.filter((l) => (op === 'venta' ? l.operation === 'venta' : l.operation !== 'venta'));
+    const edges = [0, ...cuts, null];
+    const groups = edges.slice(0, -1).map((min, i) => ({ cur, min, max: edges[i + 1], items: [] }));
+    const other = { cur: null, min: null, max: null, items: [] }; // otra moneda o sin precio
+    for (const l of list) {
+      const g = l.currency === cur && l.price ? groups.find((x) => x.max == null || l.price < x.max) : other;
+      g.items.push(forApp(l));
+    }
+    status.files[op] = [];
+    for (const [i, g] of [...groups, other].entries()) {
+      const f = `${op}-${i}.json`;
+      await writeFile(join(DATA, f), JSON.stringify({ updated_at: status.updated_at, listings: g.items }));
+      status.files[op].push({ f, cur: g.cur, min: g.min, max: g.max, n: g.items.length });
+    }
     status[`total_${op}`] = list.length;
   }
   await rm(join(DATA, 'listings.json'), { force: true });

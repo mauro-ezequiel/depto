@@ -21,6 +21,7 @@ const state = {
   view: [],
   shown: 0,
   favs: new Set(store.get('favs', [])),
+  favData: store.get('favData', {}),
   hidden: new Set(store.get('hidden', [])),
   lastVisit: store.get('lastVisit', null),
   f: Object.assign(
@@ -75,6 +76,52 @@ const pricePerM2 = (l) => (l.price && (l.area_total || l.area_covered) ? l.price
 // ---------- datos ----------
 // Los avisos vienen en dos archivos (venta y alquiler); primero el de la pestaña actual.
 const parts = { venta: [], alquiler: [] };
+// Los avisos vienen en archivos por operación y tramo de precio (ver status.files):
+// solo se bajan los que el filtro de precio necesita, así carga rápido aunque haya muchísimos.
+const loaded = new Map(); // archivo -> avisos
+const pending = new Set();
+let loading = null;
+
+function neededFiles() {
+  const files = state.status?.files;
+  if (!files) return [];
+  if (state.f.op === 'fav') return [];
+  const list = files[state.f.op] || [];
+  const pr = state.f.price[state.f.op];
+  const min = +pr?.min || 0, max = +pr?.max || 0;
+  if (!min && !max) return list;
+  // con precio cargado solo sirven los avisos en esa moneda (los demás se descartan igual)
+  return list.filter((x) => x.cur === pr.cur && (!max || x.min <= max) && (!min || x.max == null || x.max > min));
+}
+
+function rebuild() {
+  const seen = new Set();
+  state.all = [];
+  for (const items of loaded.values()) for (const l of items) { seen.add(l.id); state.all.push(l); }
+  // los guardados se ven siempre, aunque su tramo de precio no esté bajado
+  for (const [id, l] of Object.entries(state.favData)) if (!seen.has(id)) state.all.push(l);
+}
+
+async function ensureData() {
+  const want = neededFiles().filter((x) => !loaded.has(x.f) && !pending.has(x.f));
+  if (!want.length) return loading;
+  want.forEach((x) => pending.add(x.f));
+  const run = (async () => {
+    $('#meta').classList.add('loading');
+    // primero el tramo más chico, para mostrar algo enseguida; el resto en paralelo
+    const [first, ...rest] = [...want].sort((a, b) => a.n - b.n);
+    const get = (x) => fetch(`data/${x.f}`, { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : { listings: [] }))
+      .then((d) => { loaded.set(x.f, d.listings || []); }).finally(() => pending.delete(x.f));
+    await get(first);
+    rebuild(); apply({ keep: true });
+    if (rest.length) { await Promise.all(rest.map(get)); rebuild(); buildFilterChips(); apply({ keep: true }); }
+    $('#meta').classList.remove('loading');
+  })();
+  run.catch(() => { $('#meta').classList.remove('loading'); });
+  loading = run;
+  try { await run; } finally { if (loading === run) { loading = null; if (!state.view.length) apply({ keep: true }); } }
+}
+
 async function load({ quiet = false } = {}) {
   try {
     const s = await fetch('data/status.json', { cache: 'no-cache' }).then((r) => r.json()).catch(() => null);
@@ -82,14 +129,11 @@ async function load({ quiet = false } = {}) {
     const before = state.updatedAt;
     const prevIds = quiet ? new Set(state.all.map((l) => l.id)) : null;
     state.status = s;
-    const order = state.f.op === 'alquiler' ? ['alquiler', 'venta'] : ['venta', 'alquiler'];
-    for (const op of order) {
-      const d = await fetch(`data/${op}.json`, { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : { listings: [] }));
-      parts[op] = d.listings || [];
-      state.all = [...parts.venta, ...parts.alquiler];
-      state.updatedAt = s?.updated_at || d.updated_at || null;
-      if (!quiet) { buildFilterChips(); apply(); }
-    }
+    state.updatedAt = s?.updated_at || null;
+    loaded.clear();
+    if (!quiet) { rebuild(); buildFilterChips(); apply({ keep: true }); }
+    await ensureData();
+    if (!quiet) { buildFilterChips(); apply({ keep: true }); }
     if (quiet && before && before !== state.updatedAt) {
       const n = state.all.filter((l) => !prevIds.has(l.id)).length;
       buildFilterChips(); apply();
@@ -101,8 +145,9 @@ async function load({ quiet = false } = {}) {
 }
 
 // ---------- filtros ----------
-function apply() {
+function apply({ keep = false } = {}) {
   const f = state.f;
+  if (!keep && neededFiles().some((x) => !loaded.has(x.f))) ensureData();
   const q = f.q.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
   let v = state.all.filter((l) => {
     if (f.op === 'fav') { if (!state.favs.has(l.id)) return false; }
@@ -144,11 +189,13 @@ function apply() {
   };
   v.sort(sorts[f.sort] || sorts.new);
   state.view = v;
+  // al sumar avisos de otro tramo no se pierde lo que ya estabas mirando
+  const shown = keep ? Math.max(state.shown, PAGE) : PAGE;
   state.shown = 0;
   $('#grid').innerHTML = '';
   renderMeta();
   syncPriceBar();
-  if (state.mode === 'map') renderMap(); else renderMore();
+  if (state.mode === 'map') renderMap(); else renderMore(shown);
   store.set('filters', { ...f, q: f.q });
   const active = ['types', 'sources'].reduce((n, k) => n + (f[k].length ? 1 : 0), 0)
     + NUM_FILTERS.filter((k) => f[k]).length + (f.photos ? 1 : 0) + (f.sort !== 'new' ? 1 : 0);
@@ -157,7 +204,8 @@ function apply() {
   document.querySelectorAll('#opChips .chip[data-op]').forEach((b) => b.classList.toggle('on', b.dataset.op === f.op));
 
   if (!v.length) {
-    if (!state.all.length) {
+    if (loading || pending.size) showEmpty('Cargando avisos…', 'Un momento.');
+    else if (!state.all.length) {
       showEmpty('Todavía no hay avisos',
         'El recolector todavía no corrió o no pudo leer los portales. Tocá “Estado de portales” arriba para ver qué pasó.');
     } else if (f.op === 'fav') showEmpty('No guardaste avisos todavía', 'Tocá ♡ en cualquier aviso para guardarlo acá.');
@@ -175,7 +223,7 @@ function renderMeta() {
   const bad = s ? Object.values(s.sources || {}).filter((x) => x.ok === false).length : 0;
   $('#meta').innerHTML = `
     <span>${nf.format(state.view.length)} avisos</span>
-    ${state.updatedAt ? `<span>· actualizado ${ago(state.updatedAt)}</span>` : ''}
+    ${pending.size ? '<span>· cargando más…</span>' : state.updatedAt ? `<span>· actualizado ${ago(state.updatedAt)}</span>` : ''}
     <button type="button" id="srcBtn">Estado de portales${bad ? ` (${bad} con problemas)` : ''}</button>`;
   $('#srcBtn').onclick = openSources;
 }
@@ -212,8 +260,8 @@ function card(l) {
   return el;
 }
 
-function renderMore() {
-  const next = state.view.slice(state.shown, state.shown + PAGE);
+function renderMore(n = PAGE) {
+  const next = state.view.slice(state.shown, state.shown + n);
   const frag = document.createDocumentFragment();
   next.forEach((l) => frag.appendChild(card(l)));
   $('#grid').appendChild(frag);
@@ -221,8 +269,9 @@ function renderMore() {
 }
 
 function toggleFav(l, btn, short) {
-  if (state.favs.has(l.id)) state.favs.delete(l.id); else state.favs.add(l.id);
+  if (state.favs.has(l.id)) { state.favs.delete(l.id); delete state.favData[l.id]; } else { state.favs.add(l.id); state.favData[l.id] = l; }
   store.set('favs', [...state.favs]);
+  store.set('favData', state.favData);
   const on = state.favs.has(l.id);
   if (btn) btn.textContent = short ? (on ? '♥' : '♡') : (on ? '♥ Guardado' : '♡ Guardar');
 }
