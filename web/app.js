@@ -26,7 +26,7 @@ const state = {
   lastVisit: store.get('lastVisit', null),
   f: Object.assign(
     {
-      q: '', op: 'venta', types: [], sources: [], rooms: '', beds: '', baths: '', atmin: '', atmax: '', acmin: '', acmax: '', sort: 'new', photos: false, showHidden: false,
+      q: '', op: 'venta', types: [], sources: [], feats: [], rooms: '', beds: '', baths: '', atmin: '', atmax: '', acmin: '', acmax: '', sort: 'new', photos: false, showHidden: false,
       // precio aparte para comprar y para alquilar
       price: { venta: { cur: 'USD', min: '', max: '' }, alquiler: { cur: 'ARS', min: '', max: '' } },
     },
@@ -55,6 +55,9 @@ function ago(iso) {
 }
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const srcLabel = (s) => state.status?.sources?.[s]?.label || s;
+// Características que se marcan en cada aviso (vienen del portal o del título)
+const FEATS = { credito: 'Apto crédito', cochera: 'Cochera', balcon: 'Balcón', patio: 'Patio' };
+const featList = (l) => Object.keys(FEATS).filter((k) => l[k] === true);
 function feats(l) {
   const f = [];
   if (l.area_total) f.push(`${nf.format(l.area_total)} m² tot.`);
@@ -163,6 +166,7 @@ function apply({ keep = false } = {}) {
     if (!f.showHidden && f.op !== 'fav' && state.hidden.has(l.id)) return false;
     if (f.types.length && !f.types.includes(l.type)) return false;
     if (f.sources.length && !f.sources.includes(l.source)) return false;
+    if (f.feats?.length && !f.feats.every((k) => l[k] === true)) return false;
     if (f.rooms && !(l.rooms >= +f.rooms)) return false;
     if (f.beds && !(bedrooms(l) >= +f.beds)) return false;
     if (f.baths && !(l.bathrooms >= +f.baths)) return false;
@@ -197,7 +201,7 @@ function apply({ keep = false } = {}) {
   syncPriceBar();
   if (state.mode === 'map') renderMap(); else renderMore(shown);
   store.set('filters', { ...f, q: f.q });
-  const active = ['types', 'sources'].reduce((n, k) => n + (f[k].length ? 1 : 0), 0)
+  const active = ['types', 'sources', 'feats'].reduce((n, k) => n + (f[k]?.length ? 1 : 0), 0)
     + NUM_FILTERS.filter((k) => f[k]).length + (f.photos ? 1 : 0) + (f.sort !== 'new' ? 1 : 0);
   $('#filterCount').textContent = active;
   $('#filterCount').classList.toggle('hidden', !active);
@@ -239,14 +243,14 @@ function card(l) {
     <span class="src">${esc(srcLabel(l.source))}${l.publisher ? ` · ${esc(l.publisher)}` : ''}</span>
     ${isNew(l) ? '<span class="src tag-new" style="left:auto;right:10px">Nuevo</span>' : (l.images?.length > 1 ? `<span class="count">${l.images.length} fotos</span>` : '')}
     <div class="body">
-      <div class="price">${esc(money(l))}${l.expenses ? `<small>+ $ ${nf.format(l.expenses)} exp.</small>` : ''}${l.price_prev && l.price < l.price_prev ? '<span class="drop">▼ bajó</span>' : ''}</div>
-      <div class="feats">${[TYPES[l.type], OPS[l.operation], ...feats(l)].filter(Boolean).map((x) => `<span>${esc(x)}</span>`).join('')}</div>
+      <div class="price">${esc(money(l))}${l.expenses ? `<small>+ $ ${nf.format(l.expenses)} expensas</small>` : l.expenses === 0 ? '<small>sin expensas</small>' : ''}${l.price_prev && l.price < l.price_prev ? '<span class="drop">▼ bajó</span>' : ''}</div>
+      <div class="feats">${[TYPES[l.type], OPS[l.operation], ...feats(l)].filter(Boolean).map((x) => `<span>${esc(x)}</span>`).join('')}${featList(l).map((k) => `<span class="hl">${esc(FEATS[k])}</span>`).join('')}</div>
       ${place(l) ? `<div class="place">${esc(place(l))}</div>` : ''}
       ${l.title ? `<div class="title">${esc(l.title)}</div>` : ''}
       <div class="cardfoot">
         <button class="ibtn" data-act="fav" aria-label="Guardar">${state.favs.has(l.id) ? '♥' : '♡'}</button>
         ${l.lat != null || place(l) ? '<button class="ibtn" data-act="map">📍 Mapa</button>' : ''}
-        <a class="go" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">Ver en ${esc(srcLabel(l.source))} ↗</a>
+        <a class="go" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">Ver fotos y agendar ↗</a>
       </div>
     </div>`;
   el.addEventListener('click', (e) => {
@@ -302,7 +306,8 @@ function openDetail(l) {
     ['Operación', OPS[l.operation]],
     ['Tipo', TYPES[l.type]],
     ['Precio', money(l)],
-    ['Expensas', l.expenses ? `$ ${nf.format(l.expenses)}` : null],
+    ['Expensas', l.expenses ? `$ ${nf.format(l.expenses)}` : l.expenses === 0 ? 'No tiene' : 'El aviso no lo dice'],
+    ...Object.entries(FEATS).map(([k, name]) => [name, l[k] === true ? 'Sí' : l[k] === false ? 'No' : null]),
     ['Precio anterior', l.price_prev ? `${l.currency === 'USD' ? 'USD' : '$'} ${nf.format(l.price_prev)}` : null],
     ['Precio por m²', pricePerM2(l) ? `${l.currency === 'USD' ? 'USD' : '$'} ${nf.format(Math.round(pricePerM2(l)))}` : null],
     ['Superficie total', l.area_total ? `${nf.format(l.area_total)} m²` : null],
@@ -335,7 +340,7 @@ function openDetail(l) {
       </div>
       <div class="actions" style="position:static">
         ${map ? `<button type="button" class="ghost" style="flex:1" data-act="map">📍 Mapa</button>` : ''}
-        <a class="primary" style="flex:2;height:46px;border-radius:12px;font-weight:700" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">Ver en ${esc(srcLabel(l.source))} ↗</a>
+        <a class="primary" style="flex:2;height:46px;border-radius:12px;font-weight:700" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">Ver fotos y agendar visita en ${esc(srcLabel(l.source))} ↗</a>
       </div>
       ${navigator.share ? '<div class="actions" style="position:static"><button type="button" class="ghost" data-act="share">Compartir</button></div>' : ''}
     </div>`;
@@ -390,6 +395,7 @@ function syncForm() {
   for (const k of [...AREA_FIELDS, 'sort']) fm.elements[k].value = state.f[k];
   fm.elements.photos.checked = state.f.photos;
   fm.elements.showHidden.checked = state.f.showHidden;
+  document.querySelectorAll('#featChips .chip').forEach((b) => b.classList.toggle('on', (state.f.feats || []).includes(b.dataset.v)));
   for (const [id, k] of CHIP_FILTERS) document.querySelectorAll(`#${id} .chip`).forEach((b) => b.classList.toggle('on', b.dataset.v === String(state.f[k])));
 }
 
@@ -400,6 +406,7 @@ function readForm() {
   state.f.showHidden = fm.elements.showHidden.checked;
   state.f.types = [...document.querySelectorAll('#typeChips .chip.on')].map((b) => b.dataset.v);
   state.f.sources = [...document.querySelectorAll('#sourceChips .chip.on')].map((b) => b.dataset.v);
+  state.f.feats = [...document.querySelectorAll('#featChips .chip.on')].map((b) => b.dataset.v);
   for (const [id, k] of CHIP_FILTERS) state.f[k] = document.querySelector(`#${id} .chip.on`)?.dataset.v || '';
 }
 
@@ -517,7 +524,7 @@ function init() {
   });
   $('#filterForm').addEventListener('submit', () => { readForm(); apply(); window.scrollTo({ top: 0 }); });
   $('#resetFilters').onclick = () => {
-    Object.assign(state.f, { types: [], sources: [], sort: 'new', photos: false, showHidden: false }, Object.fromEntries(NUM_FILTERS.map((k) => [k, ''])));
+    Object.assign(state.f, { types: [], sources: [], feats: [], sort: 'new', photos: false, showHidden: false }, Object.fromEntries(NUM_FILTERS.map((k) => [k, ''])));
     buildFilterChips(); syncForm();
   };
 

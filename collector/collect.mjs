@@ -43,6 +43,18 @@ async function readJson(p, fallback) {
   try { return JSON.parse(await readFile(p, 'utf8')); } catch { return fallback; }
 }
 
+// Características que se leen del título (y de la dirección del aviso, que repite el título)
+const TEXT_FEATURES = {
+  credito: [/apto\W*(cr[eé]dito|banco|hipotec)|acepta\W*cr[eé]dito/i, /no\W*apto\W*cr[eé]dito/i],
+  cochera: [/cochera|garage|garaje/i, /sin\W*cochera/i],
+  balcon: [/balc[oó]n/i, /sin\W*balc[oó]n/i],
+  patio: [/patio|jard[ií]n/i, /sin\W*patio/i],
+};
+export function textFeatures(l) {
+  const text = `${l.title || ''} ${decodeURIComponent(String(l.url || '').split('/').pop() || '').replace(/-/g, ' ')}`;
+  for (const [k, [yes, no]] of Object.entries(TEXT_FEATURES)) if (l[k] == null && yes.test(text) && !no.test(text)) l[k] = true;
+}
+
 function valid(l) {
   return l && l.url && /^https?:\/\//.test(l.url) && (l.title || l.address || l.images?.length);
 }
@@ -126,6 +138,8 @@ export async function run(only, mode = {}) {
       }
     }
   }
+
+  for (const l of listings) textFeatures(l);
 
   const mem = (where) => {
     const m = `${where}: ${listings.length} avisos, memoria ${Math.round(process.memoryUsage().rss / 1e6)} MB`;

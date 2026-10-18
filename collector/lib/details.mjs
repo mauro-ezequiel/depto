@@ -13,6 +13,12 @@ const LABELS = {
   area_covered: /^superficie cubierta$/i,
   expenses: /^expensas$/i,
 };
+// Datos de sí/no de la ficha
+const FLAGS = {
+  credito: /^apto cr[eé]dito$/i,
+  balcon: /^balc[oó]n$/i,
+  patio: /^(patio|jard[ií]n)$/i,
+};
 
 // Busca pares {"name"/"text": "Dormitorios", "value"/"value_name": "2"} en el JSON de la página.
 export function parseMlDetail(html) {
@@ -26,8 +32,12 @@ export function parseMlDetail(html) {
     let m;
     while ((m = pairRe.exec(html))) {
       const [, label, value] = m;
+      for (const [k, re] of Object.entries(FLAGS)) {
+        if (out[k] == null && re.test(label.trim()) && /^(s[ií]|no)$/i.test(value.trim())) out[k] = /^s/i.test(value.trim());
+      }
       const num = value.match(/\d+(?:[.,]\d+)*/)?.[0];
       if (!num) continue;
+      if (/^cocheras$/i.test(label.trim()) && out.cochera == null) out.cochera = toNumber(num) > 0;
       for (const [k, re] of Object.entries(LABELS)) {
         if (out[k] == null && re.test(label.trim())) out[k] = toNumber(num);
       }
@@ -74,6 +84,7 @@ export async function enrichMercadoLibre(listings, cfg, log, checkpoint) {
       for (const k of ['rooms', 'bedrooms', 'bathrooms']) if (d[k] === 0) delete d[k];
       for (const [k, v] of Object.entries(d)) {
         if (v == null || (Array.isArray(v) && !v.length)) continue;
+        if (v === false && l[k] === true) continue; // si el título lo dice, no lo pisamos
         if (k === 'images' && (l.images?.length || 0) >= v.length) continue;
         l[k] = v;
       }

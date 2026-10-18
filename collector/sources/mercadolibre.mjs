@@ -172,7 +172,7 @@ export default {
       venta: [[0, 60000], [60000, 90000], [90000, 120000], [120000, 160000], [160000, 220000], [220000, 320000], [320000, 500000], [500000, 1000000], [1000000, 100000000]].map(([a, b]) => `_PriceRange_${a}USD-${b}USD`),
       alquiler: [[0, 400000], [400000, 550000], [550000, 700000], [700000, 900000], [900000, 1200000], [1200000, 1800000], [1800000, 100000000000]].map(([a, b]) => `_PriceRange_${a}ARS-${b}ARS`),
     };
-    const crawlSearch = async (base, op, type, label, filter = '', barrio = null) => {
+    const crawlSearch = async (base, op, type, label, filter = '', barrio = null, feat = null) => {
       let total = null, n = 0, raw = 0;
       // Vista de mapa: 100 avisos por página y con las coordenadas de cada uno
       for (let p = 0; p < maxPages * 50 / PER; p++) {
@@ -193,6 +193,8 @@ export default {
         const items = page.filter((l) => !seen.has(l.id));
         // los que ya vinieron en la búsqueda general se enteran acá de su barrio
         if (barrio) for (const l of page) { const o = seen.get(l.id); if (o && !o.neighborhood) o.neighborhood = l.neighborhood; }
+        // búsquedas con filtro de ML (apto crédito, cochera, patio): marcan esa característica
+        if (feat) for (const l of page) { l[feat] = true; const o = seen.get(l.id); if (o) o[feat] = true; }
         items.forEach((l) => seen.set(l.id, l));
         out.push(...items);
         n += items.length;
@@ -213,23 +215,32 @@ export default {
     try { if (progPath) prog = { ...prog, ...JSON.parse(await readFile(progPath, 'utf8')) }; } catch { /* primera vez */ }
     const capped = new Set(prog.capped);
     const cap = maxPages * 50;
+    // Características que ML deja filtrar: cada búsqueda filtrada marca a sus avisos
+    const FEATURES = {
+      credito: { path: 'apto-credito/', filter: '' },
+      cochera: { path: '', filter: '_PARKING*LOTS_1-*' },
+      patio: { path: '', filter: '_HAS*GARDEN_242085' },
+    };
+    const FEATURE_TYPES = ['departamento', 'ph', 'casa'];
     const tasks = () => {
       const t = [];
-      for (const op of cfg.operaciones) {
-        for (const type of cfg.tipos) {
-          if (!TYPE_SLUG[type]) continue;
-          const base = `https://inmuebles.mercadolibre.com.ar/${TYPE_SLUG[type]}/${OP_SLUG[op]}/${zona}/`;
-          const main = `${type}/${op}`;
-          t.push({ label: main, base, op, type });
-          // Si hay más de lo que ML deja ver en una búsqueda, se parte por barrio y después por precio
-          if (!capped.has(main)) continue;
-          for (const barrio of cfg.zona.barrios || []) {
-            const lb = `${main}/${barrio}`;
-            t.push({ label: lb, base: `${base}${barrio}/`, op, type, barrio });
-            if (!capped.has(lb)) continue;
-            for (const r of RANGES[op] || []) t.push({ label: `${lb}${r.replace('_PriceRange', '')}`, base: `${base}${barrio}/`, filter: r, op, type, barrio });
-          }
+      const add = (op, type, feat) => {
+        const f = feat ? FEATURES[feat] : { path: '', filter: '' };
+        const base = `https://inmuebles.mercadolibre.com.ar/${TYPE_SLUG[type]}/${OP_SLUG[op]}/${f.path}${zona}/`;
+        const main = `${feat ? feat + ':' : ''}${type}/${op}`;
+        t.push({ label: main, base, filter: f.filter, op, type, feat });
+        // Si hay más de lo que ML deja ver en una búsqueda, se parte por barrio y después por precio
+        if (!capped.has(main)) return;
+        for (const barrio of cfg.zona.barrios || []) {
+          const lb = `${main}/${barrio}`;
+          t.push({ label: lb, base: `${base}${barrio}/`, filter: f.filter, op, type, barrio, feat });
+          if (!capped.has(lb)) continue;
+          for (const r of RANGES[op] || []) t.push({ label: `${lb}${r.replace('_PriceRange', '')}`, base: `${base}${barrio}/`, filter: f.filter + r, op, type, barrio, feat });
         }
+      };
+      for (const op of cfg.operaciones) for (const type of cfg.tipos) if (TYPE_SLUG[type]) add(op, type);
+      for (const feat of Object.keys(FEATURES)) {
+        for (const op of cfg.operaciones) for (const type of FEATURE_TYPES) if (cfg.tipos.includes(type)) add(op, type, feat);
       }
       return t;
     };
@@ -239,7 +250,7 @@ export default {
     let done = 0;
     while (done < list.length && Date.now() < deadline) {
       const t = list[i % list.length];
-      const total = await crawlSearch(t.base, t.op, t.type, t.label, t.filter, t.barrio);
+      const total = await crawlSearch(t.base, t.op, t.type, t.label, t.filter, t.barrio, t.feat);
       const was = capped.has(t.label);
       if (total == null) { /* error suelto: se deja como estaba */ } else if (total > cap) capped.add(t.label); else capped.delete(t.label);
       done++;

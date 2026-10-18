@@ -135,3 +135,16 @@ test('inmobiliarias: RealEstateListing de schema.org', async () => {
   assert.equal(l.neighborhood, 'Palermo');
   assert.equal(l.publisher, 'LJ Ramos');
 });
+
+test('características: apto crédito, cochera, balcón y patio', async () => {
+  const { textFeatures } = await import('../collect.mjs');
+  const { parseMlDetail } = await import('../lib/details.mjs');
+  const a = { title: 'Venta 3 amb con balcón - Apto Crédito', url: 'https://x.com/MLA-1-venta-3-amb-cochera-fija-_JM' };
+  textFeatures(a);
+  assert.deepEqual([a.credito, a.cochera, a.balcon, a.patio], [true, true, true, undefined]);
+  const b = { title: 'PH con patio, sin cochera, no apto crédito' };
+  textFeatures(b);
+  assert.deepEqual([b.credito, b.cochera, b.patio], [undefined, undefined, true]);
+  const d = parseMlDetail('{"id":"Cocheras","text":"1"},{"id":"Apto crédito","text":"Sí"},{"id":"Balcón","text":"No"}');
+  assert.deepEqual([d.cochera, d.credito, d.balcon], [true, true, false]);
+});
