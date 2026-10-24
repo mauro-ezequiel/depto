@@ -192,3 +192,6 @@ body.mapmode main { display: none; }
 .pin span[style*="#d6262b"], .pin span[style*="#7b3fe4"], .pin span[style*="#1f6feb"] { color: #fff; }
 .pin.approx span { opacity: .75; border-style: dashed; }
 .leaflet-container { font: inherit; }
+.bestbar .chips { padding-top: 8px; }
+.bestbar .sep { flex: none; width: 1px; background: var(--line); margin: 4px 4px; }
+.bestbar .hint { margin: 4px 0 2px; }

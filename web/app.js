@@ -26,7 +26,7 @@ const state = {
   lastVisit: store.get('lastVisit', null),
   f: Object.assign(
     {
-      q: '', op: 'venta', types: [], sources: [], feats: [], rooms: '', beds: '', baths: '', atmin: '', atmax: '', acmin: '', acmax: '', sort: 'new', photos: false, showHidden: false,
+      q: '', op: 'venta', types: [], sources: [], feats: [], estado: ['usado', 'nuevo'], rooms: '', beds: '', baths: '', atmin: '', atmax: '', acmin: '', acmax: '', sort: 'new', photos: false, showHidden: false,
       // precio aparte para comprar y para alquilar
       price: { venta: { cur: 'USD', min: '', max: '' }, alquiler: { cur: 'ARS', min: '', max: '' } },
     },
@@ -34,7 +34,9 @@ const state = {
   ),
   mode: store.get('mode', 'list'),
 };
-if (!['venta', 'alquiler', 'fav'].includes(state.f.op)) state.f.op = 'venta';
+if (!['venta', 'alquiler', 'best', 'fav'].includes(state.f.op)) state.f.op = 'venta';
+if (!Array.isArray(state.f.estado)) state.f.estado = ['usado', 'nuevo']; // de entrada, sin pozo
+state.f.best = Object.assign({ op: 'venta', beds: '1' }, state.f.best || {});
 state.f.price = Object.assign(
   { venta: { cur: 'USD', min: '', max: '' }, alquiler: { cur: 'ARS', min: '', max: '' } }, state.f.price || {},
 );
@@ -85,10 +87,25 @@ const loaded = new Map(); // archivo -> avisos
 const pending = new Set();
 let loading = null;
 
+// Mejores precios: piso para descartar precios que no son el valor real (cocheras, anticipos, errores)
+const BEST = { venta: { cur: 'USD', floor: 20000, upTo: 130000 }, alquiler: { cur: 'ARS', floor: 150000, upTo: 800000 } };
+const NOT_REAL_PRICE = /anticipo|cuota|financ|desde\s+u?\$?s?\s*\d|pozo/i;
+
+// Usado / a estrenar / en pozo
+function estado(l) {
+  if (l.pozo) return 'pozo';
+  if (l.nuevo || l.antiguedad === 0) return 'nuevo';
+  return 'usado';
+}
+
 function neededFiles() {
   const files = state.status?.files;
   if (!files) return [];
   if (state.f.op === 'fav') return [];
+  if (state.f.op === 'best') {
+    const b = BEST[state.f.best.op];
+    return (files[state.f.best.op] || []).filter((x) => x.cur === b.cur && x.min < b.upTo);
+  }
   const list = files[state.f.op] || [];
   const pr = state.f.price[state.f.op];
   const min = +pr?.min || 0, max = +pr?.max || 0;
@@ -154,7 +171,13 @@ function apply({ keep = false } = {}) {
   const q = f.q.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
   let v = state.all.filter((l) => {
     if (f.op === 'fav') { if (!state.favs.has(l.id)) return false; }
-    else {
+    else if (f.op === 'best') {
+      const b = BEST[f.best.op];
+      if (l.operation !== f.best.op || l.type !== 'departamento' || l.currency !== b.cur) return false;
+      if (!(l.price >= b.floor) || bedrooms(l) !== +f.best.beds) return false;
+      if (l.pozo || NOT_REAL_PRICE.test(l.title || '')) return false;
+      if (l.city && !/capital|caba|ciudad/i.test(l.city)) return false; // solo Capital
+    } else {
       if (l.operation !== f.op) return false;
       const pr = f.price[f.op];
       if (pr) {
@@ -164,9 +187,10 @@ function apply({ keep = false } = {}) {
       }
     }
     if (!f.showHidden && f.op !== 'fav' && state.hidden.has(l.id)) return false;
-    if (f.types.length && !f.types.includes(l.type)) return false;
+    if (f.op !== 'best' && f.types.length && !f.types.includes(l.type)) return false;
     if (f.sources.length && !f.sources.includes(l.source)) return false;
     if (f.feats?.length && !f.feats.every((k) => l[k] === true)) return false;
+    if (f.op !== 'best' && f.op !== 'fav' && f.estado?.length && !f.estado.includes(estado(l))) return false;
     if (f.rooms && !(l.rooms >= +f.rooms)) return false;
     if (f.beds && !(bedrooms(l) >= +f.beds)) return false;
     if (f.baths && !(l.bathrooms >= +f.baths)) return false;
@@ -191,7 +215,7 @@ function apply({ keep = false } = {}) {
     m2_asc: (a, b) => num(pricePerM2(a)) - num(pricePerM2(b)),
     area_desc: (a, b) => (b.area_total || b.area_covered || 0) - (a.area_total || a.area_covered || 0),
   };
-  v.sort(sorts[f.sort] || sorts.new);
+  v.sort(f.op === 'best' ? sorts.price_asc : sorts[f.sort] || sorts.new);
   state.view = v;
   // al sumar avisos de otro tramo no se pierde lo que ya estabas mirando
   const shown = keep ? Math.max(state.shown, PAGE) : PAGE;
@@ -201,11 +225,14 @@ function apply({ keep = false } = {}) {
   syncPriceBar();
   if (state.mode === 'map') renderMap(); else renderMore(shown);
   store.set('filters', { ...f, q: f.q });
-  const active = ['types', 'sources', 'feats'].reduce((n, k) => n + (f[k]?.length ? 1 : 0), 0)
+  const active = ['types', 'sources', 'feats', 'estado'].reduce((n, k) => n + (f[k]?.length ? 1 : 0), 0)
     + NUM_FILTERS.filter((k) => f[k]).length + (f.photos ? 1 : 0) + (f.sort !== 'new' ? 1 : 0);
   $('#filterCount').textContent = active;
   $('#filterCount').classList.toggle('hidden', !active);
   document.querySelectorAll('#opChips .chip[data-op]').forEach((b) => b.classList.toggle('on', b.dataset.op === f.op));
+  $('#bestbar').classList.toggle('hidden', f.op !== 'best');
+  document.querySelectorAll('#bestOp .chip[data-v]').forEach((b) => b.classList.toggle('on', b.dataset.v === f.best.op));
+  document.querySelectorAll('#bestOp .chip[data-b]').forEach((b) => b.classList.toggle('on', b.dataset.b === f.best.beds));
 
   if (!v.length) {
     if (loading || pending.size) showEmpty('Cargando avisos…', 'Un momento.');
@@ -307,6 +334,8 @@ function openDetail(l) {
     ['Tipo', TYPES[l.type]],
     ['Precio', money(l)],
     ['Expensas', l.expenses ? `$ ${nf.format(l.expenses)}` : l.expenses === 0 ? 'No tiene' : 'El aviso no lo dice'],
+    ['Estado', { usado: 'Usado', nuevo: 'A estrenar', pozo: 'En pozo / en construcción' }[estado(l)] + (l.pozo || l.nuevo || l.antiguedad != null ? '' : ' (no dice lo contrario)')],
+    ['Antigüedad', l.antiguedad != null ? `${l.antiguedad} años` : null],
     ...Object.entries(FEATS).map(([k, name]) => [name, l[k] === true ? 'Sí' : l[k] === false ? 'No' : null]),
     ['Precio anterior', l.price_prev ? `${l.currency === 'USD' ? 'USD' : '$'} ${nf.format(l.price_prev)}` : null],
     ['Precio por m²', pricePerM2(l) ? `${l.currency === 'USD' ? 'USD' : '$'} ${nf.format(Math.round(pricePerM2(l)))}` : null],
@@ -396,6 +425,7 @@ function syncForm() {
   fm.elements.photos.checked = state.f.photos;
   fm.elements.showHidden.checked = state.f.showHidden;
   document.querySelectorAll('#featChips .chip').forEach((b) => b.classList.toggle('on', (state.f.feats || []).includes(b.dataset.v)));
+  document.querySelectorAll('#estadoChips .chip').forEach((b) => b.classList.toggle('on', (state.f.estado || []).includes(b.dataset.v)));
   for (const [id, k] of CHIP_FILTERS) document.querySelectorAll(`#${id} .chip`).forEach((b) => b.classList.toggle('on', b.dataset.v === String(state.f[k])));
 }
 
@@ -407,6 +437,7 @@ function readForm() {
   state.f.types = [...document.querySelectorAll('#typeChips .chip.on')].map((b) => b.dataset.v);
   state.f.sources = [...document.querySelectorAll('#sourceChips .chip.on')].map((b) => b.dataset.v);
   state.f.feats = [...document.querySelectorAll('#featChips .chip.on')].map((b) => b.dataset.v);
+  state.f.estado = [...document.querySelectorAll('#estadoChips .chip.on')].map((b) => b.dataset.v);
   for (const [id, k] of CHIP_FILTERS) state.f[k] = document.querySelector(`#${id} .chip.on`)?.dataset.v || '';
 }
 
@@ -501,6 +532,12 @@ function init() {
     const b = e.target.closest('.chip[data-op]'); if (!b) return;
     state.f.op = b.dataset.op; apply();
   });
+  $('#bestOp').addEventListener('click', (e) => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    if (b.dataset.v) state.f.best.op = b.dataset.v;
+    if (b.dataset.b) state.f.best.beds = b.dataset.b;
+    apply(); window.scrollTo({ top: 0 });
+  });
   let pt;
   const onPrice = () => {
     const pr = state.f.price[state.f.op]; if (!pr) return;
@@ -524,7 +561,7 @@ function init() {
   });
   $('#filterForm').addEventListener('submit', () => { readForm(); apply(); window.scrollTo({ top: 0 }); });
   $('#resetFilters').onclick = () => {
-    Object.assign(state.f, { types: [], sources: [], feats: [], sort: 'new', photos: false, showHidden: false }, Object.fromEntries(NUM_FILTERS.map((k) => [k, ''])));
+    Object.assign(state.f, { types: [], sources: [], feats: [], estado: [], sort: 'new', photos: false, showHidden: false }, Object.fromEntries(NUM_FILTERS.map((k) => [k, ''])));
     buildFilterChips(); syncForm();
   };
 

@@ -91,10 +91,10 @@
     "zonaprop": true,
     "properati": true
   },
-  "remax_paginas": 10,
+  "remax_paginas": 300,
   "geocodificar": true,
   "geocodificar_max": 900,
-  "nuroa_paginas": 4,
+  "nuroa_paginas": 20,
   "inmobiliarias": [
     {
       "nombre": "LJ Ramos",

@@ -35,8 +35,13 @@
     <nav class="chips tabs" id="opChips" aria-label="Operación">
       <button data-op="venta" class="chip on">Comprar</button>
       <button data-op="alquiler" class="chip">Alquilar</button>
+      <button data-op="best" class="chip">💲 Mejores precios</button>
       <button data-op="fav" class="chip">♥ Guardados</button>
     </nav>
+    <div class="bestbar hidden" id="bestbar">
+      <div class="chips" id="bestOp"><button type="button" data-v="venta" class="chip on">Comprar</button><button type="button" data-v="alquiler" class="chip">Alquilar</button><span class="sep"></span><button type="button" data-b="1" class="chip on">1 dormitorio</button><button type="button" data-b="2" class="chip">2 dormitorios</button></div>
+      <p class="hint">Los departamentos más baratos de Capital, del más barato al más caro. Sin pozo, anticipos ni cuotas.</p>
+    </div>
     <div class="pricebar" id="pricebar">
       <select id="pcur" aria-label="Moneda"><option value="USD">USD</option><option value="ARS">$</option></select>
       <input id="pmin" type="number" inputmode="numeric" placeholder="Precio mín." aria-label="Precio mínimo">
@@ -88,6 +93,11 @@
           <input name="acmin" type="number" inputmode="numeric" placeholder="Mínimo">
           <input name="acmax" type="number" inputmode="numeric" placeholder="Máximo">
         </div>
+      </fieldset>
+      <fieldset>
+        <legend>Estado</legend>
+        <div class="chips wrap" id="estadoChips"><button type="button" data-v="usado" class="chip">Usado</button><button type="button" data-v="nuevo" class="chip">A estrenar</button><button type="button" data-v="pozo" class="chip">En pozo</button></div>
+        <p class="hint">Sin ninguno marcado se ven todos. "En pozo" incluye emprendimientos en construcción y con entrega futura.</p>
       </fieldset>
       <fieldset>
         <legend>Características</legend>

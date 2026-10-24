@@ -98,6 +98,8 @@ export function parsePolycards(html, { operation, type } = {}) {
         neighborhood: parts.length > 1 ? parts[parts.length - 2] : null,
         city: parts[parts.length - 1] || null,
         // la vista de mapa trae las coordenadas de cada aviso
+        // emprendimiento (unidades en pozo o en construcción)
+        pozo: /DEVELOPMENT/.test(md.domain_id || '') || undefined,
         lat: Number(md.latitude) || null,
         lng: Number(md.longitude) || null,
         area_total: num(/m².*tot/i),
@@ -220,8 +222,10 @@ export default {
       credito: { path: 'apto-credito/', filter: '' },
       cochera: { path: '', filter: '_PARKING*LOTS_1-*' },
       patio: { path: '', filter: '_HAS*GARDEN_242085' },
+      nuevo: { path: '', filter: '_ITEM*CONDITION_2230284' }, // a estrenar
     };
     const FEATURE_TYPES = ['departamento', 'ph', 'casa'];
+    const FEATURE_OPS = { nuevo: ['venta'] };
     const tasks = () => {
       const t = [];
       const add = (op, type, feat) => {
@@ -240,7 +244,7 @@ export default {
       };
       for (const op of cfg.operaciones) for (const type of cfg.tipos) if (TYPE_SLUG[type]) add(op, type);
       for (const feat of Object.keys(FEATURES)) {
-        for (const op of cfg.operaciones) for (const type of FEATURE_TYPES) if (cfg.tipos.includes(type)) add(op, type, feat);
+        for (const op of FEATURE_OPS[feat] || cfg.operaciones) for (const type of FEATURE_TYPES) if (cfg.tipos.includes(type)) add(op, type, feat);
       }
       return t;
     };

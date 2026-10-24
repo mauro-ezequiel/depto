@@ -49,6 +49,9 @@ const TEXT_FEATURES = {
   cochera: [/cochera|garage|garaje/i, /sin\W*cochera/i],
   balcon: [/balc[oó]n/i, /sin\W*balc[oó]n/i],
   patio: [/patio|jard[ií]n/i, /sin\W*patio/i],
+  // en pozo / en construcción: entrega futura, preventa, emprendimiento
+  pozo: [/\bpozo\b|en\W*construcci[oó]n|pre\W*venta|lanzamiento|fideicomiso|entr(ega|\.)?\W+(en\W+)?(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)[a-z]*\W*\d{2,4}|entrega\W+20\d\d/i, /entrega\W*inmediata/i],
+  nuevo: [/a\W*estrenar|estrenar/i, /para\W*estrenar\W*no/i],
 };
 export function textFeatures(l) {
   const text = `${l.title || ''} ${decodeURIComponent(String(l.url || '').split('/').pop() || '').replace(/-/g, ' ')}`;

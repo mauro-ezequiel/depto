@@ -38,6 +38,7 @@ export function parseMlDetail(html) {
       const num = value.match(/\d+(?:[.,]\d+)*/)?.[0];
       if (!num) continue;
       if (/^cocheras$/i.test(label.trim()) && out.cochera == null) out.cochera = toNumber(num) > 0;
+      if (/^antig[uü]edad$/i.test(label.trim()) && out.antiguedad == null) out.antiguedad = toNumber(num);
       for (const [k, re] of Object.entries(LABELS)) {
         if (out[k] == null && re.test(label.trim())) out[k] = toNumber(num);
       }

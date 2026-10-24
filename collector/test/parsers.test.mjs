@@ -148,3 +148,12 @@ test('características: apto crédito, cochera, balcón y patio', async () => {
   const d = parseMlDetail('{"id":"Cocheras","text":"1"},{"id":"Apto crédito","text":"Sí"},{"id":"Balcón","text":"No"}');
   assert.deepEqual([d.cochera, d.credito, d.balcon], [true, true, false]);
 });
+
+test('estado: en pozo y a estrenar', async () => {
+  const { textFeatures } = await import('../collect.mjs');
+  const t = (title) => { const l = { title }; textFeatures(l); return [l.pozo, l.nuevo]; };
+  assert.deepEqual(t('Departamento En Flores De 3 Amb - Entr Abril 27'), [true, undefined]);
+  assert.deepEqual(t('Monoambiente en pozo, financiado'), [true, undefined]);
+  assert.deepEqual(t('2 ambientes a estrenar, entrega inmediata'), [undefined, true]);
+  assert.deepEqual(t('3 amb reciclado con balcón'), [undefined, undefined]);
+});
