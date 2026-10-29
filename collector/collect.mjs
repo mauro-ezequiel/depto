@@ -22,6 +22,15 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = join(ROOT, 'web', 'data');
 const STATE = process.env.DEPTO_STATE || join(ROOT, 'state');
 
+const CARD_IMAGES = 5;
+const PHOTO_SHARDS = 2048;
+// mismo cálculo que en la app (web/app.js, photoShard)
+export function photoShard(id) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return h % PHOTO_SHARDS;
+}
+
 // Tramos de precio de los archivos publicados
 const BUCKETS = {
   venta: { cur: 'USD', cuts: [60000, 80000, 100000, 130000, 180000, 250000, 400000] },
@@ -35,7 +44,8 @@ function forApp(l) {
   const { last_seen, detail_at, detail_v, ...o } = l;
   if (o.city === 'Capital Federal') delete o.city;
   if (o.lat != null) { o.lat = +o.lat.toFixed(5); o.lng = +o.lng.toFixed(5); }
-  if (o.images?.length > 8) o.images = o.images.slice(0, 8);
+  // en la lista van pocas fotos; la galería completa está en data/fotos/ (se baja al abrir el aviso)
+  if (o.images?.length > CARD_IMAGES) { o.nimg = o.images.length; o.images = o.images.slice(0, CARD_IMAGES); }
   return o;
 }
 
@@ -199,6 +209,19 @@ export async function run(only, mode = {}) {
     }
     status[`total_${op}`] = list.length;
   }
+  // Galerías completas, repartidas en muchos archivos chicos
+  const PHOTOS = join(DATA, 'fotos');
+  await rm(PHOTOS, { recursive: true, force: true });
+  await mkdir(PHOTOS, { recursive: true });
+  const shards = new Map();
+  for (const l of listings) {
+    if (!(l.images?.length > CARD_IMAGES)) continue;
+    const k = photoShard(l.id);
+    if (!shards.has(k)) shards.set(k, {});
+    shards.get(k)[l.id] = l.images;
+  }
+  for (const [k, v] of shards) await writeFile(join(PHOTOS, `${k}.json`), JSON.stringify(v));
+  status.photo_shards = PHOTO_SHARDS;
   await rm(join(DATA, 'listings.json'), { force: true });
   await writeFile(join(DATA, 'status.json'), JSON.stringify(status, null, 2));
   if (saveState) await writeFile(join(STATE, 'status.json'), JSON.stringify(status, null, 2));

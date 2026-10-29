@@ -2,3 +2,4 @@ node_modules/
 debug/
 state/
 web/data/*.json
+web/data/fotos/

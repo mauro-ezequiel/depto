@@ -47,8 +47,11 @@ export function parseMlDetail(html) {
   const lat = html.match(/"latitude":\s*(-?\d+\.\d+)/);
   const lng = html.match(/"longitude":\s*(-?\d+\.\d+)/);
   if (lat && lng) { out.lat = Number(lat[1]); out.lng = Number(lng[1]); }
-  const pics = uniq([...html.matchAll(/https:\/\/http2\.mlstatic\.com\/D_NQ_NP_(?:2X_)?(\d+-MLA\d+_\d+)-[A-Z]\.(?:webp|jpg)/g)].map((x) => x[1]));
-  if (pics.length) out.images = pics.slice(0, 15).map((id) => `https://http2.mlstatic.com/D_NQ_NP_${id}-O.webp`);
+  // La galería del aviso es el primer "pictures":[...] de la página (el resto pueden ser otros avisos)
+  const gallery = html.match(/"pictures":\[(.*?)\]/)?.[1];
+  let pics = gallery ? uniq([...gallery.matchAll(/"id":"(\d+-MLA\d+_\d+)"/g)].map((x) => x[1])) : [];
+  if (!pics.length) pics = uniq([...html.matchAll(/https:\/\/http2\.mlstatic\.com\/D_NQ_NP_(?:2X_)?(\d+-MLA\d+_\d+)-[A-Z]\.(?:webp|jpg)/g)].map((x) => x[1]));
+  if (pics.length) out.images = pics.slice(0, 40).map((id) => `https://http2.mlstatic.com/D_NQ_NP_${id}-O.webp`);
   return out;
 }
 

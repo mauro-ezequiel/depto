@@ -39,7 +39,7 @@ export function mapRemax(x, op) {
     bedrooms: toNumber(x.bedrooms) || null,
     bathrooms: toNumber(x.bathrooms) || null,
     images: uniq((x.photos || []).sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-      .map((p) => p.value && (p.value.startsWith('http') ? p.value : IMG + p.value))).slice(0, 15),
+      .map((p) => p.value && (p.value.startsWith('http') ? p.value : IMG + p.value))).slice(0, 40),
   };
 }
 

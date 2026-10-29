@@ -36,7 +36,7 @@ const state = {
 };
 if (!['venta', 'alquiler', 'best', 'fav'].includes(state.f.op)) state.f.op = 'venta';
 if (!Array.isArray(state.f.estado)) state.f.estado = ['usado', 'nuevo']; // de entrada, sin pozo
-state.f.best = Object.assign({ op: 'venta', beds: '1' }, state.f.best || {});
+state.f.best = Object.assign({ op: 'venta', beds: '' }, state.f.best || {});
 state.f.price = Object.assign(
   { venta: { cur: 'USD', min: '', max: '' }, alquiler: { cur: 'ARS', min: '', max: '' } }, state.f.price || {},
 );
@@ -88,7 +88,13 @@ const pending = new Set();
 let loading = null;
 
 // Mejores precios: piso para descartar precios que no son el valor real (cocheras, anticipos, errores)
-const BEST = { venta: { cur: 'USD', floor: 20000, upTo: 130000 }, alquiler: { cur: 'ARS', floor: 150000, upTo: 800000 } };
+const BEST = {
+  venta: { cur: 'USD', floor: 20000, m2Floor: 600 },
+  alquiler: { cur: 'ARS', floor: 150000, m2Floor: 2500 },
+};
+// precio por m² cubierto (es lo que se compara entre departamentos); si no hay, el total
+const m2Area = (l) => l.area_covered || l.area_total;
+const bestM2 = (l) => (l.price && m2Area(l) >= 20 && m2Area(l) <= 400 ? l.price / m2Area(l) : null);
 const NOT_REAL_PRICE = /anticipo|cuota|financ|desde\s+u?\$?s?\s*\d|pozo/i;
 
 // Usado / a estrenar / en pozo
@@ -104,7 +110,7 @@ function neededFiles() {
   if (state.f.op === 'fav') return [];
   if (state.f.op === 'best') {
     const b = BEST[state.f.best.op];
-    return (files[state.f.best.op] || []).filter((x) => x.cur === b.cur && x.min < b.upTo);
+    return (files[state.f.best.op] || []).filter((x) => x.cur === b.cur);
   }
   const list = files[state.f.op] || [];
   const pr = state.f.price[state.f.op];
@@ -174,7 +180,9 @@ function apply({ keep = false } = {}) {
     else if (f.op === 'best') {
       const b = BEST[f.best.op];
       if (l.operation !== f.best.op || l.type !== 'departamento' || l.currency !== b.cur) return false;
-      if (!(l.price >= b.floor) || bedrooms(l) !== +f.best.beds) return false;
+      if (!(l.price >= b.floor) || (f.best.beds && bedrooms(l) !== +f.best.beds)) return false;
+      const m2 = bestM2(l);
+      if (!m2 || m2 < b.m2Floor) return false; // sin m² o con un valor que no puede ser real
       if (l.pozo || NOT_REAL_PRICE.test(l.title || '')) return false;
       if (l.city && !/capital|caba|ciudad/i.test(l.city)) return false; // solo Capital
     } else {
@@ -215,7 +223,7 @@ function apply({ keep = false } = {}) {
     m2_asc: (a, b) => num(pricePerM2(a)) - num(pricePerM2(b)),
     area_desc: (a, b) => (b.area_total || b.area_covered || 0) - (a.area_total || a.area_covered || 0),
   };
-  v.sort(f.op === 'best' ? sorts.price_asc : sorts[f.sort] || sorts.new);
+  v.sort(f.op === 'best' ? (a, b) => bestM2(a) - bestM2(b) : sorts[f.sort] || sorts.new);
   state.view = v;
   // al sumar avisos de otro tramo no se pierde lo que ya estabas mirando
   const shown = keep ? Math.max(state.shown, PAGE) : PAGE;
@@ -268,9 +276,9 @@ function card(l) {
       ? imgs.map((u, i) => `<img src="${esc(u)}" alt="" loading="${i ? 'lazy' : 'lazy'}" decoding="async" referrerpolicy="no-referrer">`).join('')
       : '<div class="nophoto">Sin fotos</div>'}</div>
     <span class="src">${esc(srcLabel(l.source))}${l.publisher ? ` · ${esc(l.publisher)}` : ''}</span>
-    ${isNew(l) ? '<span class="src tag-new" style="left:auto;right:10px">Nuevo</span>' : (l.images?.length > 1 ? `<span class="count">${l.images.length} fotos</span>` : '')}
+    ${isNew(l) ? '<span class="src tag-new" style="left:auto;right:10px">Nuevo</span>' : ((l.nimg || l.images?.length) > 1 ? `<span class="count">${l.nimg || l.images.length} fotos</span>` : '')}
     <div class="body">
-      <div class="price">${esc(money(l))}${l.expenses ? `<small>+ $ ${nf.format(l.expenses)} expensas</small>` : l.expenses === 0 ? '<small>sin expensas</small>' : ''}${l.price_prev && l.price < l.price_prev ? '<span class="drop">▼ bajó</span>' : ''}</div>
+      <div class="price">${esc(money(l))}${state.f.op === 'best' && bestM2(l) ? `<small class="m2">${l.currency === 'USD' ? 'USD' : '$'} ${nf.format(Math.round(bestM2(l)))}/m²</small>` : ''}${l.expenses ? `<small>+ $ ${nf.format(l.expenses)} expensas</small>` : ''}${l.price_prev && l.price < l.price_prev ? '<span class="drop">▼ bajó</span>' : ''}</div>
       <div class="feats">${[TYPES[l.type], OPS[l.operation], ...feats(l)].filter(Boolean).map((x) => `<span>${esc(x)}</span>`).join('')}${featList(l).map((k) => `<span class="hl">${esc(FEATS[k])}</span>`).join('')}</div>
       ${place(l) ? `<div class="place">${esc(place(l))}</div>` : ''}
       ${l.title ? `<div class="title">${esc(l.title)}</div>` : ''}
@@ -326,6 +334,71 @@ function toggleHidden(l) {
   store.set('hidden', [...state.hidden]);
 }
 
+// ---------- fotos ----------
+// La lista trae pocas fotos por aviso; la galería completa está en data/fotos/<n>.json
+function photoShard(id) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return h % (state.status?.photo_shards || 2048);
+}
+const shardCache = new Map();
+async function fullImages(l) {
+  if (!(l.nimg > (l.images?.length || 0)) || !state.status?.photo_shards) return l.images || [];
+  const k = photoShard(l.id);
+  if (!shardCache.has(k)) shardCache.set(k, fetch(`data/fotos/${k}.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
+  return (await shardCache.get(k))[l.id] || l.images || [];
+}
+const galleryHtml = (imgs) => (imgs.length
+  ? imgs.map((u, i) => `<img src="${esc(u)}" alt="Foto ${i + 1}" loading="lazy" referrerpolicy="no-referrer" data-i="${i}">`).join('')
+  : '<div class="nophoto">Sin fotos</div>');
+
+// Visor a pantalla completa: deslizar para pasar, pellizcar o tocar dos veces para agrandar
+function openViewer(imgs, start = 0) {
+  const v = $('#viewer');
+  v.innerHTML = `<div class="vtrack">${imgs.map((u) => `<div class="vslide"><img src="${esc(u)}" alt="" referrerpolicy="no-referrer" draggable="false"></div>`).join('')}</div>
+    <div class="vbar"><span class="vcount">${start + 1} / ${imgs.length}</span><button type="button" class="vclose" aria-label="Cerrar">×</button></div>`;
+  const track = v.querySelector('.vtrack');
+  const count = v.querySelector('.vcount');
+  v.querySelector('.vclose').onclick = () => v.close();
+  v.showModal();
+  track.scrollLeft = start * track.clientWidth;
+  track.addEventListener('scroll', () => { count.textContent = `${Math.round(track.scrollLeft / track.clientWidth) + 1} / ${imgs.length}`; }, { passive: true });
+  v.querySelectorAll('.vslide').forEach((slide) => {
+    const img = slide.querySelector('img');
+    let scale = 1, pts = new Map(), startDist = 0, startScale = 1, lastTap = 0;
+    const setScale = (sc, cx = slide.clientWidth / 2, cy = slide.clientHeight / 2) => {
+      sc = Math.min(5, Math.max(1, sc));
+      const fx = (slide.scrollLeft + cx) / (slide.scrollWidth || 1), fy = (slide.scrollTop + cy) / (slide.scrollHeight || 1);
+      scale = sc;
+      img.style.width = `${sc * 100}%`; img.style.height = `${sc * 100}%`;
+      slide.classList.toggle('zoomed', sc > 1);
+      track.classList.toggle('locked', sc > 1); // con zoom, el dedo mueve la foto y no pasa a la otra
+      slide.scrollLeft = fx * slide.scrollWidth - cx; slide.scrollTop = fy * slide.scrollHeight - cy;
+    };
+    slide.addEventListener('pointerdown', (e) => {
+      pts.set(e.pointerId, e);
+      if (pts.size === 2) { const [a, b] = [...pts.values()]; startDist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); startScale = scale; }
+      const now = Date.now();
+      if (pts.size === 1 && now - lastTap < 300) { const r = slide.getBoundingClientRect(); setScale(scale > 1 ? 1 : 2.5, e.clientX - r.left, e.clientY - r.top); }
+      lastTap = now;
+    });
+    slide.addEventListener('pointermove', (e) => {
+      if (!pts.has(e.pointerId)) return;
+      const prev = pts.get(e.pointerId);
+      pts.set(e.pointerId, e);
+      // con zoom, un dedo mueve la foto
+      if (pts.size === 1 && scale > 1) { slide.scrollLeft -= e.clientX - prev.clientX; slide.scrollTop -= e.clientY - prev.clientY; }
+      if (pts.size === 2 && startDist) {
+        const [a, b] = [...pts.values()];
+        const r = slide.getBoundingClientRect();
+        setScale(startScale * Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) / startDist, (a.clientX + b.clientX) / 2 - r.left, (a.clientY + b.clientY) / 2 - r.top);
+      }
+    });
+    const up = (e) => { pts.delete(e.pointerId); if (pts.size < 2) startDist = 0; };
+    slide.addEventListener('pointerup', up); slide.addEventListener('pointercancel', up);
+  });
+}
+
 // ---------- detalle ----------
 function openDetail(l) {
   const d = $('#detail');
@@ -333,7 +406,7 @@ function openDetail(l) {
     ['Operación', OPS[l.operation]],
     ['Tipo', TYPES[l.type]],
     ['Precio', money(l)],
-    ['Expensas', l.expenses ? `$ ${nf.format(l.expenses)}` : l.expenses === 0 ? 'No tiene' : 'El aviso no lo dice'],
+    ['Expensas', l.expenses ? `$ ${nf.format(l.expenses)}` : 'El aviso no lo dice'],
     ['Estado', { usado: 'Usado', nuevo: 'A estrenar', pozo: 'En pozo / en construcción' }[estado(l)] + (l.pozo || l.nuevo || l.antiguedad != null ? '' : ' (no dice lo contrario)')],
     ['Antigüedad', l.antiguedad != null ? `${l.antiguedad} años` : null],
     ...Object.entries(FEATS).map(([k, name]) => [name, l[k] === true ? 'Sí' : l[k] === false ? 'No' : null]),
@@ -356,9 +429,8 @@ function openDetail(l) {
     : place(l) ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place(l))}` : null;
   d.innerHTML = `
     <button class="close" aria-label="Cerrar">×</button>
-    <div class="photos">${(l.images || []).length
-      ? l.images.map((u) => `<img src="${esc(u)}" alt="" loading="lazy" referrerpolicy="no-referrer">`).join('')
-      : '<div class="nophoto">Sin fotos</div>'}</div>
+    <div class="photos" id="dphotos">${galleryHtml(l.images || [])}</div>
+    <div class="pcount" id="dpcount">${(l.nimg || l.images?.length || 0) > 1 ? `${l.nimg || l.images.length} fotos · tocá para agrandar` : l.images?.length ? 'Tocá para agrandar' : ''}</div>
     <div class="sheetbody">
       <div class="price">${esc(money(l))}</div>
       ${l.title ? `<h2 style="margin-top:6px">${esc(l.title)}</h2>` : ''}
@@ -384,8 +456,14 @@ function openDetail(l) {
     if (a === 'map') { d.close(); showOnMap(l); }
     if (a === 'share') navigator.share({ title: l.title || 'Aviso', url: l.url }).catch(() => {});
   };
+  let imgs = l.images || [];
+  $('#dphotos').onclick = (e) => { const im = e.target.closest('img'); if (im) openViewer(imgs, +im.dataset.i || 0); };
   d.showModal();
   d.scrollTop = 0;
+  // la galería completa llega aparte
+  fullImages(l).then((all) => {
+    if (all.length > imgs.length && d.open && $('#dphotos')) { imgs = all; $('#dphotos').innerHTML = galleryHtml(all); }
+  });
 }
 
 // ---------- estado de portales ----------
@@ -535,7 +613,7 @@ function init() {
   $('#bestOp').addEventListener('click', (e) => {
     const b = e.target.closest('.chip'); if (!b) return;
     if (b.dataset.v) state.f.best.op = b.dataset.v;
-    if (b.dataset.b) state.f.best.beds = b.dataset.b;
+    if ('b' in b.dataset) state.f.best.beds = b.dataset.b;
     apply(); window.scrollTo({ top: 0 });
   });
   let pt;

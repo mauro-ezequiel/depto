@@ -39,8 +39,8 @@
       <button data-op="fav" class="chip">♥ Guardados</button>
     </nav>
     <div class="bestbar hidden" id="bestbar">
-      <div class="chips" id="bestOp"><button type="button" data-v="venta" class="chip on">Comprar</button><button type="button" data-v="alquiler" class="chip">Alquilar</button><span class="sep"></span><button type="button" data-b="1" class="chip on">1 dormitorio</button><button type="button" data-b="2" class="chip">2 dormitorios</button></div>
-      <p class="hint">Los departamentos más baratos de Capital, del más barato al más caro. Sin pozo, anticipos ni cuotas.</p>
+      <div class="chips" id="bestOp"><button type="button" data-v="venta" class="chip on">Comprar</button><button type="button" data-v="alquiler" class="chip">Alquilar</button><span class="sep"></span><button type="button" data-b="" class="chip on">Todos</button><button type="button" data-b="1" class="chip">1 dorm.</button><button type="button" data-b="2" class="chip">2 dorm.</button></div>
+      <p class="hint">Departamentos de Capital ordenados por precio por m² cubierto, del más barato al más caro. Sin pozo, anticipos ni cuotas.</p>
     </div>
     <div class="pricebar" id="pricebar">
       <select id="pcur" aria-label="Moneda"><option value="USD">USD</option><option value="ARS">$</option></select>
@@ -61,6 +61,7 @@
   </section>
 
   <!-- Filtros -->
+  <dialog id="viewer" class="viewer" aria-label="Fotos"></dialog>
   <dialog id="filters" class="sheet">
     <form method="dialog" id="filterForm">
       <h2>Filtros</h2>
