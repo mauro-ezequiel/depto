@@ -22,11 +22,10 @@ const state = {
   shown: 0,
   favs: new Set(store.get('favs', [])),
   favData: store.get('favData', {}),
-  hidden: new Set(store.get('hidden', [])),
   lastVisit: store.get('lastVisit', null),
   f: Object.assign(
     {
-      q: '', op: 'venta', types: [], sources: [], feats: [], estado: ['usado', 'nuevo'], rooms: '', beds: '', baths: '', atmin: '', atmax: '', acmin: '', acmax: '', sort: 'new', photos: false, showHidden: false,
+      q: '', op: 'venta', types: [], sources: [], feats: [], estado: ['usado', 'nuevo'], rooms: '', beds: '', baths: '', atmin: '', atmax: '', acmin: '', acmax: '', sort: 'new', photos: false,
       // precio aparte para comprar y para alquilar
       price: { venta: { cur: 'USD', min: '', max: '' }, alquiler: { cur: 'ARS', min: '', max: '' } },
     },
@@ -194,7 +193,6 @@ function apply({ keep = false } = {}) {
         if (pr.max && !(l.price && l.price <= +pr.max)) return false;
       }
     }
-    if (!f.showHidden && f.op !== 'fav' && state.hidden.has(l.id)) return false;
     if (f.op !== 'best' && f.types.length && !f.types.includes(l.type)) return false;
     if (f.sources.length && !f.sources.includes(l.source)) return false;
     if (f.feats?.length && !f.feats.every((k) => l[k] === true)) return false;
@@ -270,7 +268,7 @@ function renderMeta() {
 function card(l) {
   const imgs = (l.images || []).slice(0, 6);
   const el = document.createElement('article');
-  el.className = 'card' + (state.hidden.has(l.id) ? ' dim' : '');
+  el.className = 'card';
   el.innerHTML = `
     <div class="photos">${imgs.length
       ? imgs.map((u, i) => `<img src="${esc(u)}" alt="" loading="${i ? 'lazy' : 'lazy'}" decoding="async" referrerpolicy="no-referrer">`).join('')
@@ -329,10 +327,6 @@ function showOnMap(l) {
     .openOn(map);
 }
 
-function toggleHidden(l) {
-  if (state.hidden.has(l.id)) state.hidden.delete(l.id); else state.hidden.add(l.id);
-  store.set('hidden', [...state.hidden]);
-}
 
 // ---------- fotos ----------
 // La lista trae pocas fotos por aviso; la galería completa está en data/fotos/<n>.json
@@ -437,7 +431,6 @@ function openDetail(l) {
       <table>${rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>
       <div class="actions">
         <button type="button" class="ghost" data-act="fav">${state.favs.has(l.id) ? '♥ Guardado' : '♡ Guardar'}</button>
-        <button type="button" class="ghost" data-act="hide">${state.hidden.has(l.id) ? 'Recuperar' : 'Descartar'}</button>
       </div>
       <div class="actions" style="position:static">
         ${map ? `<button type="button" class="ghost" style="flex:1" data-act="map">📍 Mapa</button>` : ''}
@@ -452,7 +445,6 @@ function openDetail(l) {
     if (act.classList.contains('close')) return d.close();
     const a = act.dataset.act;
     if (a === 'fav') { toggleFav(l, act); apply(); }
-    if (a === 'hide') { toggleHidden(l); d.close(); apply(); toast(state.hidden.has(l.id) ? 'Aviso descartado' : 'Aviso recuperado'); }
     if (a === 'map') { d.close(); showOnMap(l); }
     if (a === 'share') navigator.share({ title: l.title || 'Aviso', url: l.url }).catch(() => {});
   };
@@ -501,7 +493,6 @@ function syncForm() {
   const fm = $('#filterForm');
   for (const k of [...AREA_FIELDS, 'sort']) fm.elements[k].value = state.f[k];
   fm.elements.photos.checked = state.f.photos;
-  fm.elements.showHidden.checked = state.f.showHidden;
   document.querySelectorAll('#featChips .chip').forEach((b) => b.classList.toggle('on', (state.f.feats || []).includes(b.dataset.v)));
   document.querySelectorAll('#estadoChips .chip').forEach((b) => b.classList.toggle('on', (state.f.estado || []).includes(b.dataset.v)));
   for (const [id, k] of CHIP_FILTERS) document.querySelectorAll(`#${id} .chip`).forEach((b) => b.classList.toggle('on', b.dataset.v === String(state.f[k])));
@@ -511,7 +502,6 @@ function readForm() {
   const fm = $('#filterForm');
   for (const k of [...AREA_FIELDS, 'sort']) state.f[k] = fm.elements[k].value;
   state.f.photos = fm.elements.photos.checked;
-  state.f.showHidden = fm.elements.showHidden.checked;
   state.f.types = [...document.querySelectorAll('#typeChips .chip.on')].map((b) => b.dataset.v);
   state.f.sources = [...document.querySelectorAll('#sourceChips .chip.on')].map((b) => b.dataset.v);
   state.f.feats = [...document.querySelectorAll('#featChips .chip.on')].map((b) => b.dataset.v);
@@ -639,7 +629,7 @@ function init() {
   });
   $('#filterForm').addEventListener('submit', () => { readForm(); apply(); window.scrollTo({ top: 0 }); });
   $('#resetFilters').onclick = () => {
-    Object.assign(state.f, { types: [], sources: [], feats: [], estado: [], sort: 'new', photos: false, showHidden: false }, Object.fromEntries(NUM_FILTERS.map((k) => [k, ''])));
+    Object.assign(state.f, { types: [], sources: [], feats: [], estado: [], sort: 'new', photos: false }, Object.fromEntries(NUM_FILTERS.map((k) => [k, ''])));
     buildFilterChips(); syncForm();
   };
 
