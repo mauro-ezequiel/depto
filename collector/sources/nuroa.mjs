@@ -110,6 +110,7 @@ export default {
               .map((l) => ({ ...l, type: 'terreno' }));
           } catch (e) {
             log(`  ${slug} p${page}: ${e.message}`);
+            if (process.env.GITHUB_ACTIONS) console.log(`::notice title=Terrenos::${slug} p${page}: ${e.message.slice(0, 200)}`);
             if (e.status === 403 || e.status === 429) throw e;
             break;
           }
@@ -119,6 +120,7 @@ export default {
           await sleep(cfg.pausa_entre_pedidos_ms);
         }
         log(`  ${slug}: ${n}`);
+        if (process.env.GITHUB_ACTIONS) console.log(`::notice title=Terrenos::${slug}: ${n} terrenos`);
       }
     }
     return out;
