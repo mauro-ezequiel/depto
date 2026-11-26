@@ -2,6 +2,8 @@
 // Cada tarjeta trae título, precio, fotos y la inmobiliaria; el JSON-LD de la
 // página agrega coordenadas, dormitorios, baños y m².
 import * as cheerio from 'cheerio';
+import { readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { cleanText, fetchText, guessType, sleep, toNumber, uniq } from '../lib/util.mjs';
 
 const TYPES = { departamento: 'departamentos', ph: 'ph', casa: 'casas', local: 'locales', oficina: 'oficinas', terreno: 'terrenos' };
@@ -88,16 +90,22 @@ export default {
     let stopped = false;
     // Terrenos: Capital y Gran Buenos Aires (hay pocos baldíos en Capital)
     const t = cfg.terrenos;
+    // Nuroa frena a las ~30 páginas: cada corrida sigue desde donde quedó la anterior
+    const progPath = cfg._state ? join(cfg._state, 'nuroa.json') : null;
+    let prog = {};
+    try { if (progPath) prog = JSON.parse(await readFile(progPath, 'utf8')); } catch { /* primera vez */ }
     if (t?.nuroa?.length) {
       for (const slug of t.nuroa) {
         if (stopped) break;
         let n = 0;
-        for (let page = 1; page <= (t.nuroa_paginas ?? 100); page++) {
+        const first = prog[slug] || 1;
+        let page = first;
+        for (; page < first + (t.nuroa_paginas ?? 100); page++) {
           const url = `https://www.nuroa.com.ar/venta/${slug}${page > 1 ? `?page=${page}` : ''}`;
-          let items;
+          let items, all;
           try {
             const html = await getPage(url);
-            const all = parseNuroa(html, { operation: 'venta', type: 'terreno' });
+            all = parseNuroa(html, { operation: 'venta', type: 'terreno' });
             items = parseNuroa(html, { operation: 'venta', type: 'terreno', box: t.bbox }).map((l) => ({ ...l, type: 'terreno' }));
             if (page === 1 && process.env.GITHUB_ACTIONS) {
               console.log(`::notice title=Terrenos::${slug} p1: html ${html.length}, ${html.match(/<title>[^<]*/)?.[0]?.slice(7, 90)}, avisos ${all.length}, en zona ${items.length}, ej ${all[0]?.lat},${all[0]?.lng}`);
@@ -110,9 +118,11 @@ export default {
           }
           n += items.length;
           out.push(...items);
-          if (!items.length && page > 3) break;
+          if (!all.length) { page = 0; break; } // se terminó: la próxima vuelve a empezar
           await sleep(cfg.pausa_entre_pedidos_ms);
         }
+        prog[slug] = Math.max(1, page);
+        if (progPath) await writeFile(progPath, JSON.stringify(prog));
         log(`  ${slug}: ${n}`);
         if (process.env.GITHUB_ACTIONS) console.log(`::notice title=Terrenos::${slug}: ${n} terrenos`);
       }
