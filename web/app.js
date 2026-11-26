@@ -33,7 +33,7 @@ const state = {
   ),
   mode: store.get('mode', 'list'),
 };
-if (!['venta', 'alquiler', 'best', 'fav'].includes(state.f.op)) state.f.op = 'venta';
+if (!['venta', 'alquiler', 'terreno', 'best', 'fav'].includes(state.f.op)) state.f.op = 'venta';
 if (!Array.isArray(state.f.estado)) state.f.estado = ['usado', 'nuevo']; // de entrada, sin pozo
 state.f.best = Object.assign({ op: 'venta', beds: '' }, state.f.best || {});
 state.f.price = Object.assign(
@@ -111,8 +111,9 @@ function neededFiles() {
     const b = BEST[state.f.best.op];
     return (files[state.f.best.op] || []).filter((x) => x.cur === b.cur);
   }
-  const list = files[state.f.op] || [];
-  const pr = state.f.price[state.f.op];
+  const op = state.f.op === 'terreno' ? 'venta' : state.f.op; // terrenos: van en los archivos de venta
+  const list = files[op] || [];
+  const pr = state.f.price[op];
   const min = +pr?.min || 0, max = +pr?.max || 0;
   if (!min && !max) return list;
   // con precio cargado solo sirven los avisos en esa moneda (los demás se descartan igual)
@@ -185,18 +186,19 @@ function apply({ keep = false } = {}) {
       if (l.pozo || NOT_REAL_PRICE.test(l.title || '')) return false;
       if (l.city && !/capital|caba|ciudad/i.test(l.city)) return false; // solo Capital
     } else {
-      if (l.operation !== f.op) return false;
-      const pr = f.price[f.op];
+      // Terrenos: solo terrenos en venta
+      if (f.op === 'terreno' ? l.operation !== 'venta' || l.type !== 'terreno' : l.operation !== f.op) return false;
+      const pr = f.price[f.op === 'terreno' ? 'venta' : f.op];
       if (pr) {
         if ((pr.min || pr.max) && l.currency !== pr.cur) return false;
         if (pr.min && !(l.price >= +pr.min)) return false;
         if (pr.max && !(l.price && l.price <= +pr.max)) return false;
       }
     }
-    if (f.op !== 'best' && f.types.length && !f.types.includes(l.type)) return false;
+    if (f.op !== 'best' && f.op !== 'terreno' && f.types.length && !f.types.includes(l.type)) return false;
     if (f.sources.length && !f.sources.includes(l.source)) return false;
     if (f.feats?.length && !f.feats.every((k) => l[k] === true)) return false;
-    if (f.op !== 'best' && f.op !== 'fav' && f.estado?.length && !f.estado.includes(estado(l))) return false;
+    if (!['best', 'fav', 'terreno'].includes(f.op) && f.estado?.length && !f.estado.includes(estado(l))) return false;
     if (f.rooms && !(l.rooms >= +f.rooms)) return false;
     if (f.beds && !(bedrooms(l) >= +f.beds)) return false;
     if (f.baths && !(l.bathrooms >= +f.baths)) return false;
@@ -510,15 +512,17 @@ function readForm() {
 }
 
 // ---------- precio (barra rápida) ----------
+// el precio de Terrenos es el mismo que el de Comprar
+const priceOp = () => (state.f.op === 'terreno' ? 'venta' : state.f.op);
 function syncPriceBar() {
-  const pr = state.f.price[state.f.op];
+  const pr = state.f.price[priceOp()];
   $('#pricebar').classList.toggle('hidden', !pr);
   if (!pr) return;
   if (document.activeElement?.closest?.('#pricebar')) return;
   $('#pcur').value = pr.cur;
   $('#pmin').value = pr.min;
   $('#pmax').value = pr.max;
-  const word = state.f.op === 'venta' ? 'Precio' : 'Alquiler';
+  const word = state.f.op === 'alquiler' ? 'Alquiler' : 'Precio';
   $('#pmin').placeholder = `${word} mín.`;
   $('#pmax').placeholder = `${word} máx.`;
 }
@@ -608,7 +612,7 @@ function init() {
   });
   let pt;
   const onPrice = () => {
-    const pr = state.f.price[state.f.op]; if (!pr) return;
+    const pr = state.f.price[priceOp()]; if (!pr) return;
     pr.cur = $('#pcur').value; pr.min = $('#pmin').value; pr.max = $('#pmax').value;
     clearTimeout(pt); pt = setTimeout(apply, 300);
   };

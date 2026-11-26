@@ -113,5 +113,19 @@
   "pausa_mercadolibre_ms": 800,
   "pausa_detalles_ms": 1100,
   "detalles_minutos": 75,
-  "detalles_paralelo": 1
+  "detalles_paralelo": 1,
+  "terrenos": {
+    "nota": "Terrenos: además de Capital, Gran Buenos Aires (AMBA)",
+    "bbox": {
+      "sur": -35.25,
+      "norte": -34.2,
+      "oeste": -59.35,
+      "este": -57.9
+    },
+    "nuroa": [
+      "terrenos-capital-federal",
+      "terrenos-gran-buenos-aires"
+    ],
+    "nuroa_paginas": 600
+  }
 }

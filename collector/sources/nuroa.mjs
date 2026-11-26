@@ -97,6 +97,30 @@ export default {
         log(`  ${type}/${op}: ${n}`);
       }
     }
+    // Terrenos: Capital y Gran Buenos Aires (hay pocos baldíos en Capital)
+    const t = cfg.terrenos;
+    if (t?.nuroa?.length) {
+      for (const slug of t.nuroa) {
+        let n = 0;
+        for (let page = 1; page <= (t.nuroa_paginas ?? 100); page++) {
+          const url = `https://www.nuroa.com.ar/venta/${slug}${page > 1 ? `?page=${page}` : ''}`;
+          let items;
+          try {
+            items = parseNuroa(await fetchText(url), { operation: 'venta', type: 'terreno', box: t.bbox })
+              .map((l) => ({ ...l, type: 'terreno' }));
+          } catch (e) {
+            log(`  ${slug} p${page}: ${e.message}`);
+            if (e.status === 403 || e.status === 429) throw e;
+            break;
+          }
+          n += items.length;
+          out.push(...items);
+          if (!items.length && page > 3) break;
+          await sleep(cfg.pausa_entre_pedidos_ms);
+        }
+        log(`  ${slug}: ${n}`);
+      }
+    }
     return out;
   },
 };

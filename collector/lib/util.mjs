@@ -40,6 +40,12 @@ export async function fetchText(url, { headers = {}, timeoutMs = 30000 } = {}) {
       },
     });
     const body = await res.text();
+    // Mercado Libre manda a una verificación de cuenta cuando bloquea
+    if (/account-verification|\/gz\/challenge|captcha/i.test(res.url)) {
+      const err = new Error(`El portal pide verificación (bloqueo anti-bots) en ${url}`);
+      err.status = 403;
+      throw err;
+    }
     if (!res.ok) {
       const err = new Error(`HTTP ${res.status} en ${url}`);
       err.status = res.status;

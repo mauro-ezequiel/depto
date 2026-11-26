@@ -14,6 +14,7 @@ import properati from './sources/properati.mjs';
 import remax from './sources/remax.mjs';
 import nuroa from './sources/nuroa.mjs';
 import inmobiliarias from './sources/inmobiliarias.mjs';
+import { toNumber } from './lib/util.mjs';
 import { geocodeListings } from './lib/geocode.mjs';
 import { enrichMercadoLibre } from './lib/details.mjs';
 
@@ -143,16 +144,24 @@ export async function run(only, mode = {}) {
   status.total = listings.length;
 
   // Coordenadas fuera de la zona (ej. el centro de Argentina que ponen por defecto) no sirven
-  const box = cfg.zona.bbox;
-  if (box) {
+  if (cfg.zona.bbox) {
     for (const l of listings) {
+      // los terrenos pueden estar en Gran Buenos Aires
+      const box = l.type === 'terreno' && cfg.terrenos?.bbox ? cfg.terrenos.bbox : cfg.zona.bbox;
       if (l.lat != null && !(l.lat >= box.sur && l.lat <= box.norte && l.lng >= box.oeste && l.lng <= box.este)) {
         delete l.lat; delete l.lng; delete l.approx;
       }
     }
   }
 
-  for (const l of listings) textFeatures(l);
+  for (const l of listings) {
+    textFeatures(l);
+    // en terrenos los m² suelen estar solo en el título
+    if (l.type === 'terreno' && !l.area_total) {
+      const m = (l.title || '').match(/(\d[\d.,]*)\s*(m2|m²|mts|metros)/i);
+      if (m) l.area_total = toNumber(m[1]) || undefined;
+    }
+  }
 
   const mem = (where) => {
     const m = `${where}: ${listings.length} avisos, memoria ${Math.round(process.memoryUsage().rss / 1e6)} MB`;
