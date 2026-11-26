@@ -1,24 +1,21 @@
-// Muestras de Mercado Libre para ver qué datos trae cada vista (lista, mapa, ficha).
+// Muestras de Mercado Libre y RE/MAX para ver qué devuelven hoy.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
 const UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36';
 const B = 'https://inmuebles.mercadolibre.com.ar/departamentos/venta/capital-federal/flores/';
 const URLS = {
-  mapa_p2a: `${B}_Desde_101_DisplayType_M_NoIndex_True`,
-  mapa_p2b: `${B}_Desde_51_DisplayType_M_NoIndex_True`,
-  mapa_p30: `${B}_Desde_2901_DisplayType_M_NoIndex_True`,
-  mapa_precio: `${B}_PriceRange_60000USD-90000USD_DisplayType_M`,
-  mapa_precio_p2: `${B}_Desde_101_PriceRange_60000USD-90000USD_DisplayType_M_NoIndex_True`,
-  item: 'https://departamento.mercadolibre.com.ar/MLA-3558709502-_JM',
+  ml_lista: B,
+  ml_mapa: `${B}_DisplayType_M`,
+  ml_terrenos: 'https://inmuebles.mercadolibre.com.ar/terrenos-lotes/venta/capital-federal/',
+  remax: 'https://api-ar.redremax.com/remaxweb-ar/api/listings/findAll?page=0&pageSize=100&sort=-createdAt&in:operationId=1',
 };
 mkdirSync('debug', { recursive: true });
 for (const [name, url] of Object.entries(URLS)) {
-  const ua = name === 'desktop' ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36' : UA;
   try {
-    const res = await fetch(url, { headers: { 'user-agent': ua, 'accept-language': 'es-AR,es;q=0.9', accept: 'text/html,*/*' }, signal: AbortSignal.timeout(25000) });
+    const res = await fetch(url, { headers: { 'user-agent': UA, 'accept-language': 'es-AR,es;q=0.9', accept: name === 'remax' ? 'application/json' : 'text/html,*/*', ...(name === 'remax' ? { origin: 'https://www.remax.com.ar' } : {}) }, signal: AbortSignal.timeout(25000) });
     const body = await res.text();
-    console.log(name, res.status, res.url, body.length, (body.match(/"latitude"/g) || []).length, (body.match(/D_NQ_NP_/g) || []).length);
-    writeFileSync(`debug/ml-${name}.html.gz`, gzipSync(body));
+    console.log(name, res.status, res.url, body.length, body.slice(0, 200).replace(/\s+/g, ' '));
+    writeFileSync(`debug/${name}.txt.gz`, gzipSync(`${res.status} ${res.url}\n${JSON.stringify(Object.fromEntries(res.headers))}\n\n${body}`));
   } catch (e) { console.log(name, e.message); }
 }
