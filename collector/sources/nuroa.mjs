@@ -106,8 +106,12 @@ export default {
           const url = `https://www.nuroa.com.ar/venta/${slug}${page > 1 ? `?page=${page}` : ''}`;
           let items;
           try {
-            items = parseNuroa(await fetchText(url), { operation: 'venta', type: 'terreno', box: t.bbox })
-              .map((l) => ({ ...l, type: 'terreno' }));
+            const html = await fetchText(url);
+            const all = parseNuroa(html, { operation: 'venta', type: 'terreno' });
+            items = parseNuroa(html, { operation: 'venta', type: 'terreno', box: t.bbox }).map((l) => ({ ...l, type: 'terreno' }));
+            if (page === 1 && process.env.GITHUB_ACTIONS) {
+              console.log(`::notice title=Terrenos::${slug} p1: html ${html.length}, ${html.match(/<title>[^<]*/)?.[0]?.slice(7, 90)}, avisos ${all.length}, en zona ${items.length}, ej ${all[0]?.lat},${all[0]?.lng}`);
+            }
           } catch (e) {
             log(`  ${slug} p${page}: ${e.message}`);
             if (process.env.GITHUB_ACTIONS) console.log(`::notice title=Terrenos::${slug} p${page}: ${e.message.slice(0, 200)}`);
