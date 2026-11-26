@@ -94,7 +94,7 @@
   "remax_paginas": 300,
   "geocodificar": true,
   "geocodificar_max": 900,
-  "nuroa_paginas": 20,
+  "nuroa_paginas": 12,
   "inmobiliarias": [
     {
       "nombre": "LJ Ramos",
@@ -126,6 +126,6 @@
       "terrenos-capital-federal",
       "terrenos-gran-buenos-aires"
     ],
-    "nuroa_paginas": 600
+    "nuroa_paginas": 200
   }
 }

@@ -67,6 +67,17 @@ export function parseNuroa(html, { operation, type, box } = {}) {
   return out;
 }
 
+// Nuroa devuelve una página mínima (~1 KB) cuando vamos muy rápido: esperamos y reintentamos una vez
+async function getPage(url) {
+  let html = await fetchText(url);
+  if (html.length < 5000) {
+    await sleep(90000);
+    html = await fetchText(url);
+    if (html.length < 5000) { const e = new Error('Nuroa frenó los pedidos (página vacía)'); e.status = 429; throw e; }
+  }
+  return html;
+}
+
 export default {
   name: 'nuroa',
   label: 'Nuroa',
@@ -74,39 +85,18 @@ export default {
     const out = [];
     const zona = cfg.zona.nuroa || 'capital-federal';
     const pages = cfg.nuroa_paginas ?? 4;
-    for (const op of cfg.operaciones) {
-      if (!OPS[op]) continue;
-      for (const type of cfg.tipos) {
-        if (!TYPES[type]) continue;
-        let n = 0;
-        for (let page = 1; page <= pages; page++) {
-          const url = `https://www.nuroa.com.ar/${OPS[op]}/${TYPES[type]}-${zona}${page > 1 ? `?page=${page}` : ''}`;
-          let items;
-          try {
-            items = parseNuroa(await fetchText(url), { operation: op, type, box: cfg.zona.bbox });
-          } catch (e) {
-            log(`  ${type}/${op} p${page}: ${e.message}`);
-            if (e.status === 403 || e.status === 429) throw e;
-            break; // un error suelto (ej. 500) no frena las demás búsquedas
-          }
-          n += items.length;
-          out.push(...items);
-          if (!items.length) break;
-          await sleep(cfg.pausa_entre_pedidos_ms);
-        }
-        log(`  ${type}/${op}: ${n}`);
-      }
-    }
+    let stopped = false;
     // Terrenos: Capital y Gran Buenos Aires (hay pocos baldíos en Capital)
     const t = cfg.terrenos;
     if (t?.nuroa?.length) {
       for (const slug of t.nuroa) {
+        if (stopped) break;
         let n = 0;
         for (let page = 1; page <= (t.nuroa_paginas ?? 100); page++) {
           const url = `https://www.nuroa.com.ar/venta/${slug}${page > 1 ? `?page=${page}` : ''}`;
           let items;
           try {
-            const html = await fetchText(url);
+            const html = await getPage(url);
             const all = parseNuroa(html, { operation: 'venta', type: 'terreno' });
             items = parseNuroa(html, { operation: 'venta', type: 'terreno', box: t.bbox }).map((l) => ({ ...l, type: 'terreno' }));
             if (page === 1 && process.env.GITHUB_ACTIONS) {
@@ -115,7 +105,7 @@ export default {
           } catch (e) {
             log(`  ${slug} p${page}: ${e.message}`);
             if (process.env.GITHUB_ACTIONS) console.log(`::notice title=Terrenos::${slug} p${page}: ${e.message.slice(0, 200)}`);
-            if (e.status === 403 || e.status === 429) throw e;
+            if (e.status === 403 || e.status === 429) stopped = true; // se guarda lo leído hasta acá
             break;
           }
           n += items.length;
@@ -125,6 +115,31 @@ export default {
         }
         log(`  ${slug}: ${n}`);
         if (process.env.GITHUB_ACTIONS) console.log(`::notice title=Terrenos::${slug}: ${n} terrenos`);
+      }
+    }
+    for (const op of cfg.operaciones) {
+      if (!OPS[op]) continue;
+      for (const type of cfg.tipos) {
+        if (!TYPES[type]) continue;
+        if (stopped) break;
+        let n = 0;
+        for (let page = 1; page <= pages; page++) {
+          const url = `https://www.nuroa.com.ar/${OPS[op]}/${TYPES[type]}-${zona}${page > 1 ? `?page=${page}` : ''}`;
+          let items;
+          try {
+            items = parseNuroa(await getPage(url), { operation: op, type, box: cfg.zona.bbox });
+          } catch (e) {
+            log(`  ${type}/${op} p${page}: ${e.message}`);
+            if ((e.status === 403 || e.status === 429) && !out.length) throw e;
+            if (e.status === 403 || e.status === 429) stopped = true;
+            break; // un error suelto (ej. 500) no frena las demás búsquedas
+          }
+          n += items.length;
+          out.push(...items);
+          if (!items.length) break;
+          await sleep(cfg.pausa_entre_pedidos_ms);
+        }
+        log(`  ${type}/${op}: ${n}`);
       }
     }
     return out;
